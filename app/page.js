@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import styles from "./page.module.css";
+import { paymentToolOptions } from '../data/paymentTools.js'; // Assuming this is the correct path to your payment tools data
 
 export default function Home() {
   // State variables
@@ -23,11 +24,6 @@ export default function Home() {
   // State for editing slips
   const [editingSlipId, setEditingSlipId] = useState(null);
   const [editingSlipData, setEditingSlipData] = useState(null);
-
-  const paymentToolOptions = [
-    'Waon', '信州割', 'その他', 'Cash', 'Credit Card', 'Pay Pay', 'R Pay', 
-    'AU Pay', 'R Edy', 'ID', 'QUIC Pay', '交通系', 'ふるさと納税', 'NANACO'
-  ];
 
   useEffect(() => {
     if (hasProcessed || manualSlips.length > 0) {
@@ -207,7 +203,7 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.header}>売上計算ソフト</h1>
+      <h1 className={styles.header}>Woody Rental 売上計算ソフト</h1>
       <div className={`${styles.dropzone} ${isDragging ? styles.dragging : ''}`} onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }} onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }} onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); processFile(e.dataTransfer.files[0]); }}>
         <p>ここにCSVファイルをドラッグ＆ドロップするか、</p>
         <input id="file-upload" type="file" accept=".csv" onChange={(e) => processFile(e.target.files[0])} className={styles.fileInput} />
@@ -221,7 +217,14 @@ export default function Home() {
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead><tr><th>大分類</th><th>中分類</th><th>小分類</th><th>合計売上金額</th></tr></thead>
-              <tbody>{paymentTableDisplayData.map((item, index) => <tr key={index}><td>{item.大分類}</td><td>{item.中分類}</td><td>{item.小分類}</td><td>{item.合計売上金額.toLocaleString()}円</td></tr>)}</tbody>
+              <tbody>{paymentTableDisplayData.map((item, index) => (
+                <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
+                  <td>{item.大分類}</td>
+                  <td>{item.中分類}</td>
+                  <td>{item.小分類}</td>
+                  <td>{item.合計売上金額.toLocaleString()}円</td>
+                </tr>
+              ))}</tbody>
               <tfoot><tr><td><strong>合計</strong></td><td></td><td></td><td><strong>{overallTotal.toLocaleString()}円</strong></td></tr></tfoot>
             </table>
           </div>
@@ -229,13 +232,13 @@ export default function Home() {
       )}
 
       <h2 className={styles.sectionTitle}>伝票入力</h2>
-      <form onSubmit={handleFormSubmit} className={styles.formContainer}>
-          <input name="slipNumber" value={formInput.slipNumber} onChange={(e) => setFormInput({...formInput, slipNumber: e.target.value})} placeholder="伝票番号" className={styles.formInput} />
-          <input name="name" value={formInput.name} onChange={(e) => setFormInput({...formInput, name: e.target.value})} placeholder="名前" className={styles.formInput} />
-          <input name="amount" value={formInput.amount} onChange={(e) => setFormInput({...formInput, amount: e.target.value})} placeholder="金額" type="number" className={styles.formInput} />
-          <select name="paymentTool" value={formInput.paymentTool} onChange={(e) => setFormInput({...formInput, paymentTool: e.target.value})} className={styles.formSelect}>{paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
-          <textarea name="memo" value={formInput.memo} onChange={(e) => setFormInput({...formInput, memo: e.target.value})} placeholder="内容・メモ" className={styles.formTextarea}></textarea>
-          <button type="submit" className={styles.formButton}>伝票を登録</button>
+      <form onSubmit={handleFormSubmit} className={styles.formContainerSingleRow}>
+          <input name="slipNumber" value={formInput.slipNumber} onChange={(e) => setFormInput({...formInput, slipNumber: e.target.value})} placeholder="伝票番号" className={styles.formInputSingleRow} />
+          <input name="amount" value={formInput.amount} onChange={(e) => setFormInput({...formInput, amount: e.target.value})} placeholder="金額" type="number" className={styles.formInputSingleRow} />
+          <select name="paymentTool" value={formInput.paymentTool} onChange={(e) => setFormInput({...formInput, paymentTool: e.target.value})} className={styles.formSelectSingleRow}>{paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
+          <input name="memo" value={formInput.memo} onChange={(e) => setFormInput({...formInput, memo: e.target.value})} placeholder="内容・メモ" className={styles.formInputSingleRow} />
+          <input name="name" value={formInput.name} onChange={(e) => setFormInput({...formInput, name: e.target.value})} placeholder="名前" className={styles.formInputSingleRow} />
+          <button type="submit" className={styles.formButtonSingleRow}>伝票を登録</button>
       </form>
 
       {manualSlips.length > 0 && (
@@ -243,17 +246,17 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>伝票</h2>
           <div className={styles.tableContainer}>
               <table className={styles.table}>
-                <thead><tr><th>伝票番号</th><th>名前</th><th>金額</th><th>決済ツール</th><th>内容・メモ</th><th>操作</th></tr></thead>
+                <thead><tr><th>伝票番号</th><th>金額</th><th>決済ツール</th><th>内容・メモ</th><th>名前</th><th>操作</th></tr></thead>
                 <tbody>
                   {manualSlips.map(slip => (
                     <tr key={slip.id}>
                       {editingSlipId === slip.id ? (
                         <>
                           <td><input type="text" value={editingSlipData.slipNumber} onChange={(e) => setEditingSlipData({...editingSlipData, slipNumber: e.target.value})} className={styles.tableInput} /></td>
-                          <td><input type="text" value={editingSlipData.name} onChange={(e) => setEditingSlipData({...editingSlipData, name: e.target.value})} className={styles.tableInput} /></td>
                           <td><input type="number" value={editingSlipData.amount} onChange={(e) => setEditingSlipData({...editingSlipData, amount: parseFloat(e.target.value) || 0})} className={styles.tableInput} /></td>
                           <td><select value={editingSlipData.paymentTool} onChange={(e) => setEditingSlipData({...editingSlipData, paymentTool: e.target.value})} className={styles.tableSelect}>{paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
                           <td><input type="text" value={editingSlipData.memo} onChange={(e) => setEditingSlipData({...editingSlipData, memo: e.target.value})} className={styles.tableInput} /></td>
+                          <td><input type="text" value={editingSlipData.name} onChange={(e) => setEditingSlipData({...editingSlipData, name: e.target.value})} className={styles.tableInput} /></td>
                           <td>
                             <button type="button" onClick={handleUpdateSlip} className={`${styles.tableButton} ${styles.saveButton}`}>保存</button>
                             <button type="button" onClick={handleCancelEdit} className={`${styles.tableButton} ${styles.cancelButton}`}>キャンセル</button>
@@ -261,7 +264,7 @@ export default function Home() {
                         </>
                       ) : (
                         <>
-                          <td>{slip.slipNumber}</td><td>{slip.name}</td><td>{slip.amount.toLocaleString()}円</td><td>{slip.paymentTool}</td><td>{slip.memo}</td>
+                          <td>{slip.slipNumber}</td><td>{slip.amount.toLocaleString()}円</td><td>{slip.paymentTool}</td><td>{slip.memo}</td><td>{slip.name}</td>
                           <td>
                             <button type="button" onClick={() => handleEditClick(slip)} className={styles.tableButton}>編集</button>
                             <button type="button" onClick={() => handleDeleteSlip(slip.id)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button>

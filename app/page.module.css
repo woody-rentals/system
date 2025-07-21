@@ -110,17 +110,78 @@
 }
 
 .table tfoot td {
-  background-color: #dbe4eb;
+  background-color: #247698;
   font-weight: 700;
-  color: #2c3e50;
+  color: #ffffff;
   font-size: 1.05rem;
+}
+
+.table .middleCategoryText {
+  color: #34495e; /* Default text color */
+}
+
+.table .subCategoryText {
+  color: #34495e; /* Default text color */
+}
+
+.middleCategoryRow {
+  background-color: #f8f8f8; /* Slightly brighter */
+}
+
+.subCategoryRow {
+  background-color: #f3f3f3; /* Slightly brighter, maintaining proportion */
 }
 
 .checkedRow {
   background-color: #e0e0e0 !important;
 }
 
-/* Form Styles */
+/* Form Styles for Single Row */
+.formContainerSingleRow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Adjust minmax for more compact fields */
+    gap: 0.5rem; /* Reduce gap */
+    padding: 1rem; /* Reduce padding */
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 1200px; /* Adjust max-width as needed */
+    margin-bottom: 2rem;
+    align-items: center; /* Vertically align items */
+}
+
+.formInputSingleRow, .formSelectSingleRow, .formButtonSingleRow {
+    height: 40px; /* Set a fixed height for all input elements */
+    padding: 0.5rem; /* Adjust padding to fit height */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.formSelectSingleRow {
+    appearance: none; /* Remove default select arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13.2-5.4H18.2c-4.8%200-9.3%201.8-13.2%205.4A17.6%2017.6%200%200%200%200%2082.2c0%204.8%201.8%209.3%205.4%2013.2l128%20127.9c3.9%203.9%208.4%205.7%2013.2%205.7s9.3-1.8%2013.2-5.7L287%2095.4c3.9-3.9%205.4-8.4%205.4-13.2%200-4.8-1.8-9.3-5.4-13.2z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
+    padding-right: 30px; /* Make space for the arrow */
+}
+
+.formButtonSingleRow {
+    background-color: #27ae60;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.formButtonSingleRow:hover {
+    background-color: #229954;
+}
+
+/* Original Form Styles (no longer used for main input) */
 .formContainer {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

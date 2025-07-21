@@ -1,0 +1,16 @@
+export const paymentToolOptions = [
+  'Cash',
+  'Credit Card',
+  'Pay Pay',
+  'ID',
+  'QUIC Pay',
+  '交通系',
+  'R Edy',
+  'NANACO',
+  'Waon',
+  'R Pay',
+  'AU Pay',
+  'ふるさと納税',
+  '信州割',
+  'その他',
+];
