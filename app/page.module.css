@@ -4,8 +4,8 @@
   align-items: center;
   padding: 2rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f7f6;
   min-height: 100vh;
+  margin: 0 auto;
 }
 
 .header {
@@ -79,10 +79,21 @@
 
 .tableContainer {
   width: 100%;
-  max-width: 1200px;
   background-color: #ffffff;
   overflow-x: auto;
   margin-bottom: 2rem;
+}
+
+.memoCell {
+  white-space: normal;
+  min-width: 15rem !important;
+}
+
+.amountCell,
+.dateCell,
+.shopCell {
+  white-space: nowrap;
+  min-width: 8rem; /* Adjust as needed */
 }
 
 .table {
@@ -107,6 +118,7 @@
   color: #2c3e50;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap; /* Add this line */
 }
 
 .table tfoot td {
@@ -134,6 +146,10 @@
 
 .checkedRow {
   background-color: #e0e0e0 !important;
+}
+
+.editedUnknownRow {
+  background-color: #f0f0f0; /* 薄いグレー */
 }
 
 /* Form Styles for Single Row */
@@ -262,3 +278,8 @@
 .tableButton.deleteButton {
     background-color: #e74c3c;
 }
+
+.unknownPaymentRow {
+  background-color: #ffe0e6; /* 薄いピンク */
+}
+

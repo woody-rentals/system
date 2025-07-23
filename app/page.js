@@ -10,13 +10,16 @@ export default function Home() {
   const [manualSlips, setManualSlips] = useState([]);
   const [paymentTableDisplayData, setPaymentTableDisplayData] = useState([]);
   const [unknownPaymentToolData, setUnknownPaymentToolData] = useState([]);
+  const [knownTransactionsData, setKnownTransactionsData] = useState([]); // New state for known transactions
   const [marketingMetrics, setMarketingMetrics] = useState(null);
   const [overallTotal, setOverallTotal] = useState(0);
+  const [applicationNumberTotals, setApplicationNumberTotals] = useState({}); // New state for application number totals
   
   const [hasProcessed, setHasProcessed] = useState(false);
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [checkedRows, setCheckedRows] = useState({});
+  const [editedUnknownRows, setEditedUnknownRows] = useState({}); // New state for tracking edited unknown rows
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
@@ -26,10 +29,10 @@ export default function Home() {
   const [editingSlipData, setEditingSlipData] = useState(null);
 
   useEffect(() => {
-    if (hasProcessed || manualSlips.length > 0) {
-      processAllData(csvData, manualSlips);
+    if (hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0) {
+      processAllData(csvData, manualSlips, unknownPaymentToolData);
     }
-  }, [csvData, manualSlips]);
+  }, [csvData, manualSlips, unknownPaymentToolData]);
 
   const resetState = () => {
     setCsvData([]);
@@ -41,6 +44,8 @@ export default function Home() {
     setHasProcessed(false);
     setError('');
     setCheckedRows({});
+    setEditedUnknownRows({});
+    setApplicationNumberTotals({});
   };
 
   const processFile = (file) => {
@@ -57,7 +62,15 @@ export default function Home() {
           setError('CSVに必須の列（金額, 決済方法, 決済ツール名）が含まれていません。');
           return;
         }
-        setCsvData(results.data);
+        setCsvData(results.data.map((row, index) => ({ ...row, originalIndex: index })));
+        // Initialize unknownPaymentToolData with all potentially unknown items from CSV
+        const initialUnknownData = results.data.map((row, index) => ({ ...row, originalIndex: index })).filter(row => {
+          const tool = row['決済ツール名'];
+          const method = row['決済方法'];
+          return (!tool || tool.trim() === '' || tool.trim().toLowerCase() === '不明') && (method.trim().toLowerCase() === '現地決済' || method.trim().toLowerCase() === '現地払い');
+        }).map(item => ({ ...item, selectedPaymentTool: '', 申込番号合計金額: '' }));
+        setUnknownPaymentToolData(initialUnknownData);
+        console.log('Initial unknownPaymentToolData after parse:', initialUnknownData);
         setHasProcessed(true);
       },
       error: (err) => setError(`CSVの解析中にエラーが発生しました: ${err.message}`)
@@ -96,50 +109,115 @@ export default function Home() {
     }
   };
 
-  const processAllData = (currentCsvData, currentManualSlips) => {
-    const salesByTool = {};
-    const unknownPaymentTools = [];
-    const applicationNumberTotals = {};
-    let unknownTotal = 0;
-
-    currentCsvData.forEach(row => {
-      let tool = row['決済ツール名'];
-      const method = row['決済方法'];
-      const amount = parseFloat(row['金額']);
-      if (isNaN(amount)) return;
-
-      if (method === 'カード払い') {
-        tool = '事前カード';
-        if (!salesByTool[tool]) salesByTool[tool] = 0;
-        salesByTool[tool] += amount;
-      } else if ((!tool || tool.trim() === '') && method === '現地決済') {
-        const unknownItem = { ...row, 金額: amount };
-        unknownPaymentTools.push(unknownItem);
-        unknownTotal += amount;
-        if (unknownItem.申込番号) {
-          if (!applicationNumberTotals[unknownItem.申込番号]) applicationNumberTotals[unknownItem.申込番号] = 0;
-          applicationNumberTotals[unknownItem.申込番号] += amount;
-        }
-      } else if (tool && tool.trim() !== '') {
-        if (!salesByTool[tool]) salesByTool[tool] = 0;
-        salesByTool[tool] += amount;
-      }
+  const handleUnknownPaymentToolChange = (index, value) => {
+    setUnknownPaymentToolData(prevData => {
+      const newData = [...prevData];
+      newData[index] = { ...newData[index], selectedPaymentTool: value };
+      return newData;
     });
-
-    currentManualSlips.forEach(slip => {
-      const tool = slip.paymentTool;
-      if (!salesByTool[tool]) salesByTool[tool] = 0;
-      salesByTool[tool] += slip.amount;
-    });
-
-    unknownPaymentTools.forEach(item => {
-      if (item.枝番 === '1' && applicationNumberTotals[item.申込番号]) {
-        item.申込番号合計金額 = applicationNumberTotals[item.申込番号];
+    setEditedUnknownRows(prev => {
+      const newEditedRows = { ...prev };
+      if (value === '') {
+        delete newEditedRows[index];
       } else {
-        item.申込番号合計金額 = '';
+        newEditedRows[index] = true;
+      }
+      return newEditedRows;
+    });
+  };
+
+  const processAllData = (currentCsvData, currentManualSlips, currentUnknownPaymentToolData) => {
+    console.log('--- processAllData START ---');
+    console.log('currentUnknownPaymentToolData at start of processAllData:', currentUnknownPaymentToolData);
+
+    const salesByTool = {}; // This will temporarily include '不明' as a key
+    const knownTransactions = [];
+    const tempApplicationNumberTotals = {};
+
+    // 1. Create a unified list of all transactions (CSV + manual)
+    const allTransactions = [
+      ...currentCsvData.map(row => ({
+        ...row,
+        amount: parseFloat(row['金額']),
+        source: 'csv'
+      })),
+      ...currentManualSlips.map(slip => ({
+        ...slip,
+        amount: parseFloat(slip.amount),
+        source: 'manual',
+        '決済方法': slip.paymentTool, // Manual slips use paymentTool as method
+        '決済ツール名': slip.paymentTool // Manual slips have known payment tool
+      }))
+    ].filter(t => !isNaN(t.amount)); // Filter out invalid amounts early
+
+    // 2. Determine the final payment tool for each transaction and aggregate
+    allTransactions.forEach(transaction => {
+      const amount = transaction.amount;
+      let finalTool = '';
+      let finalMethod = transaction['決済方法'];
+
+      // Calculate application number totals for display in unknown table
+      if (transaction.申込番号) {
+        if (!tempApplicationNumberTotals[transaction.申込番号]) tempApplicationNumberTotals[transaction.申込番号] = 0;
+        tempApplicationNumberTotals[transaction.申込番号] += amount;
+      }
+
+      if (transaction.source === 'csv') {
+        console.log('Processing CSV transaction:', transaction.originalIndex, 'Amount:', transaction['金額'], 'Method:', transaction['決済方法'], 'Tool:', transaction['決済ツール名']);
+        // Check if this CSV row corresponds to an item in unknownPaymentToolData that has been assigned a tool
+        const assignedToolItem = currentUnknownPaymentToolData.find(item =>
+          item.originalIndex === transaction.originalIndex && item.selectedPaymentTool && item.selectedPaymentTool !== ''
+        );
+
+        if (assignedToolItem) {
+          // User has assigned a tool for this previously unknown transaction
+          finalTool = assignedToolItem.selectedPaymentTool;
+          finalMethod = assignedToolItem.決済方法 || finalMethod; // Use assigned method if available
+        } else if (finalMethod && finalMethod.trim().toLowerCase() === 'カード払い') {
+          // Special rule: 'カード払い' always becomes '事前カード'
+          finalTool = '事前カード';
+        } else if (transaction['決済ツール名'] && transaction['決済ツール名'].trim() !== '' && transaction['決済ツール名'].trim().toLowerCase() !== '不明') {
+          // This is a known tool from the original CSV
+          finalTool = transaction['決済ツール名'];
+        } else if ((!transaction['決済ツール名'] || transaction['決済ツール名'].trim() === '' || transaction['決済ツール名'].trim().toLowerCase() === '不明') && (finalMethod && (finalMethod.trim().toLowerCase() === '現地決済' || finalMethod.trim().toLowerCase() === '現地払い'))) {
+          // This is a truly unknown item from CSV (現地決済/現地払い with no tool)
+          finalTool = '不明';
+        } else {
+          // Fallback for any other unhandled CSV cases, treat as unknown
+          finalTool = '不明';
+        }
+      } else if (transaction.source === 'manual') {
+        // Manual slips always have a known payment tool
+        finalTool = transaction.paymentTool;
+      }
+
+      // Add to salesByTool (which will now include '不明' as a key for aggregation)
+      if (finalTool) {
+        if (!salesByTool[finalTool]) salesByTool[finalTool] = 0;
+        salesByTool[finalTool] += amount;
+        // Always add to knownTransactions, and add flags for unknown/resolved status
+        knownTransactions.push({
+          ...transaction,
+          amount,
+          tool: finalTool,
+          method: finalMethod,
+          isUnknownPaymentTool: (finalTool === '不明'),
+          // Ensure original CSV fields are passed through for display
+          'プロモコード': transaction['プロモコード'],
+          '窓口': transaction['窓口']
+        });
+        console.log('Transaction added to knownTransactions:', knownTransactions[knownTransactions.length - 1]);
       }
     });
 
+    setKnownTransactionsData(knownTransactions);
+    setApplicationNumberTotals(tempApplicationNumberTotals);
+
+    // 3. Separate '不明' from salesByTool for final display and calculate overall total
+    const finalUnknownTotal = salesByTool['不明'] || 0;
+    delete salesByTool['不明']; // Remove '不明' from salesByTool for display purposes
+
+    // 4. Aggregate sales for display in the payment table
     const appGroup = ['R Pay', 'AU Pay'];
     const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO'];
     const creditCardGroup = ['Credit Card'];
@@ -158,10 +236,13 @@ export default function Home() {
 
     const rakutenGrandTotal = Object.values(rakutenGroupTotals).reduce((sum, total) => sum + total, 0);
     const otherGrandTotal = Object.values(otherSales).reduce((sum, total) => sum + total, 0);
-    const calculatedOverallTotal = rakutenGrandTotal + otherGrandTotal + unknownTotal;
+    const calculatedOverallTotal = rakutenGrandTotal + otherGrandTotal + finalUnknownTotal;
 
     setOverallTotal(calculatedOverallTotal);
-    setUnknownPaymentToolData(unknownPaymentTools);
+    console.log('### DEBUG ### Final salesByTool (excluding 不明):', salesByTool);
+    console.log('### DEBUG ### Final unknownTotal:', finalUnknownTotal);
+    console.log('### DEBUG ### Calculated Overall Total:', calculatedOverallTotal);
+    console.log('### DEBUG ### --- processAllData END ---');
 
     const newPaymentTableData = [];
     newPaymentTableData.push({ 大分類: '楽天', 中分類: '', 小分類: '', 合計売上金額: rakutenGrandTotal, isTotalRow: true });
@@ -177,13 +258,11 @@ export default function Home() {
     }
     const otherDataSource = Object.entries(otherSales).map(([paymentTool, total]) => ({ paymentTool, total })).sort((a, b) => b.total - a.total);
     otherDataSource.forEach(item => newPaymentTableData.push({ 大分類: item.paymentTool, 中分類: '', 小分類: '', 合計売上金額: item.total }));
-    if (unknownTotal > 0) newPaymentTableData.push({ 大分類: '不明', 中分類: '', 小分類: '', 合計売上金額: unknownTotal });
+    if (finalUnknownTotal > 0) newPaymentTableData.push({ 大分類: '不明', 中分類: '', 小分類: '', 合計売上金額: finalUnknownTotal });
     setPaymentTableDisplayData(newPaymentTableData);
 
-    const combinedDataForMetrics = [
-        ...currentCsvData.map(r => ({...r, amount: parseFloat(r.金額)})),
-        ...currentManualSlips.map(s => ({ 'お名前': s.name, '申込番号': s.slipNumber, '決済方法': s.paymentTool, amount: s.amount}))
-    ].filter(r => r.amount && !isNaN(r.amount));
+    // Marketing metrics calculation
+    const combinedDataForMetrics = allTransactions.filter(t => t.source === 'csv' || t.source === 'manual'); // Ensure only valid transactions are used
     const transactionIds = new Set(combinedDataForMetrics.map(row => row['申込番号']).filter(id => id));
     const customerNames = new Set(combinedDataForMetrics.map(row => row['お名前']).filter(name => name));
     const totalTransactions = transactionIds.size;
@@ -279,6 +358,71 @@ export default function Home() {
         </>
       )}
 
+      {unknownPaymentToolData.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>決済ツール不明の取引</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+              <tbody>
+                {unknownPaymentToolData.map((item, index) => {
+                  console.log('Unknown item:', item);
+                  return (
+                  <tr key={index} className={`${checkedRows[index] ? styles.checkedRow : ''} ${editedUnknownRows[index] ? styles.editedUnknownRow : ''}`}>
+                    <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
+                    <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td className={styles.amountCell}>{item.金額.toLocaleString()}円</td>
+                    <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
+                    <td>
+                      <select value={item.selectedPaymentTool || ''} onChange={(e) => handleUnknownPaymentToolChange(index, e.target.value)} className={styles.tableSelect}>
+                        <option value="">選択してください</option>
+                        {paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </td>
+                    <td className={styles.dateCell}>{item.貸出日}</td><td className={styles.shopCell}>{item.貸出店舗}</td><td className={styles.memoCell} style={{minWidth: '15rem'}}>{item.メモ}</td><td>{item.決済時間}</td><td>{item.貸出日時}</td><td>{item.決済方法}</td><td>{item.プロモコード}</td><td>{item.窓口}</td><td>{item.変動価格}</td>
+                    <td><button type="button" onClick={() => handleDeleteUnknownItem(item.originalIndex)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button></td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {knownTransactionsData.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>取引一覧</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+                            <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+              <tbody>
+              {console.log('knownTransactionsData before rendering:', knownTransactionsData)}
+                {knownTransactionsData.map((item, index) => (
+                  <tr key={index} className={item.isUnknownPaymentTool ? styles.unknownPaymentRow : ''}>
+                    <td></td>
+                    <td>{item.申込番号}</td>
+                    <td>{item.枝番}</td>
+                    <td>{item.お名前}</td>
+                    <td className={styles.amountCell}>{item.amount.toLocaleString()}円</td>
+                    <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
+                    <td>{item.tool}</td>
+                    <td className={styles.dateCell}>{item.貸出日}</td>
+                    <td className={styles.shopCell}>{item.貸出店舗}</td>
+                    <td className={styles.memoCell}>{item.メモ}</td>
+                    <td>{item.決済時間}</td>
+                    <td>{item.貸出日時}</td>
+                    <td>{item.method}</td>
+                    <td>{item['プロモコード']}</td>
+                    <td>{item['窓口']}</td>
+                    <td>{item.変動価格}</td>
+                    <td></td>
+                  </tr>
+                ))}
+                </tbody>
+           </table>
+          </div>
+        </>
+      )}
+
       {(hasProcessed || manualSlips.length > 0) && marketingMetrics && (
         <>
           <h2 className={styles.sectionTitle}>マーケティング指標</h2>
@@ -296,27 +440,6 @@ export default function Home() {
                     <tr key={`${method}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{data.sales.toLocaleString()}円</td></tr>,
                     <tr key={`${method}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{data.count.toLocaleString()}件</td></tr>
                 ])}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {unknownPaymentToolData.length > 0 && (
-        <>
-          <h2 className={styles.sectionTitle}>決済ツール不明の取引</h2>
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>決済時間</th><th>決済日</th><th>メモ</th><th>申込番号合計</th></tr></thead>
-              <tbody>
-                {unknownPaymentToolData.map((item, index) => (
-                  <tr key={index} className={checkedRows[index] ? styles.checkedRow : ''}>
-                    <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
-                    <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td>{item.金額.toLocaleString()}円</td>
-                    <td>{item.決済時間}</td><td>{item.決済日}</td><td>{item.メモ}</td>
-                    <td>{item.申込番号合計金額 !== '' ? item.申込番号合計金額.toLocaleString() + '円' : ''}</td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
