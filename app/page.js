@@ -22,6 +22,7 @@ export default function Home() {
   const [editedUnknownRows, setEditedUnknownRows] = useState({}); // New state for tracking edited unknown rows
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateModalData, setDuplicateModalData] = useState(null);
+  const [actualSalesInput, setActualSalesInput] = useState({}); // New state for actual sales input
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
@@ -1109,6 +1110,59 @@ export default function Home() {
                   const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
                   return (
                     <tr key={`${window}-count`}><td><strong>窓口別: {window}</strong></td><td>{count.toLocaleString()}件 ({percentage}%)</td></tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {isClient && paymentTableDisplayData.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>実売上計算ツール</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>分類</th>
+                  <th>計算金額</th>
+                  <th>入力金額</th>
+                  <th>結果</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentTableDisplayData.map((item, index) => {
+                  const key = item.大分類 + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                  const calculatedAmount = item.合計売上金額 || 0;
+                  const inputAmount = parseFloat(actualSalesInput[key]) || 0;
+                  const difference = inputAmount - calculatedAmount;
+                  const isMatch = difference === 0;
+
+                  return (
+                    <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
+                      <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
+                      <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
+                      <td>
+                        <input
+                          type="number"
+                          value={actualSalesInput[key] || ''}
+                          onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
+                          className={styles.formInputSingleRow}
+                        />
+                      </td>
+                      <td>
+                        {inputAmount !== 0 && (
+                          isMatch ? (
+                            <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
+                          ) : (
+                            <span style={{ color: 'red', fontWeight: 'bold' }}>
+                              {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
+                            </span>
+                          )
+                        )}
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>

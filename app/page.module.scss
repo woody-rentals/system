@@ -16,23 +16,25 @@ $black: #000000;
 
 .header {
   text-align: center;
-  color: #333;
+  color: $black;
   margin-bottom: 2rem;
+  font-size: 2.5rem;
+  font-weight: 700;
 }
 
 .dropzone {
-  border: 2px dashed #ccc;
-  border-radius: 8px;
+  border: 1px dashed $medium-gray;
+  border-radius: 10px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
   transition: background-color 0.3s ease;
   margin-bottom: 2rem;
-  background-color: #f9f9f9;
+  background-color: $light-gray;
 }
 
 .dropzone.dragging {
-  background-color: #e0e0e0;
+  background-color: $medium-gray;
 }
 
 .fileInput {
@@ -41,39 +43,43 @@ $black: #000000;
 
 .fileInputLabel {
   display: inline-block;
-  background-color: #007bff;
-  color: white;
-  padding: 0.5rem 1rem;
+  background-color: $primary-blue;
+  color: $white;
+  padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   margin-top: 1rem;
   transition: background-color 0.3s ease;
+  font-weight: 500;
 }
 
 .fileInputLabel:hover {
-  background-color: #0056b3;
+  background-color: darken($primary-blue, 10%);
 }
 
 .errorMessage {
-  color: red;
+  color: #FF3B30; /* Apple Red */
   text-align: center;
   margin-top: 1rem;
+  font-weight: 500;
 }
 
 .sectionTitle {
-  color: #333;
+  color: $black;
   margin-top: 2rem;
   margin-bottom: 1rem;
-  border-bottom: 2px solid #eee;
+  border-bottom: 1px solid $medium-gray;
   padding-bottom: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .tableContainer {
   overflow-x: auto;
   margin-bottom: 2rem;
-  border: 0.5px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid $medium-gray;
+  border-radius: 10px;
 }
 
 .table {
@@ -84,7 +90,7 @@ $black: #000000;
 
 .table th,
 .table td {
-  border: 0.5px solid #ddd;
+  border: 0.5px solid $medium-gray;
   padding: 0.8rem;
   text-align: left;
   white-space: nowrap; /* Prevent text wrapping */
@@ -126,10 +132,11 @@ $black: #000000;
 .formInputSingleRow,
 .formSelectSingleRow {
   flex: 1;
-  padding: 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 0.8rem;
+  border: 1px solid $medium-gray;
+  border-radius: 8px;
   min-width: 120px; /* Adjust as needed */
+  box-sizing: border-box;
 }
 
 .formButtonsContainer {
@@ -139,17 +146,18 @@ $black: #000000;
 }
 
 .formButtonSingleRow {
-  background-color: #28a745;
-  color: white;
-  padding: 0.6rem 1.2rem;
+  background-color: $primary-blue;
+  color: $white;
+  padding: 0.8rem 1.5rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  font-weight: 500;
 }
 
 .formButtonSingleRow:hover {
-  background-color: #218838;
+  background-color: darken($primary-blue, 10%);
 }
 
 .actionsCell {
@@ -159,41 +167,43 @@ $black: #000000;
 }
 
 .tableButton {
-  padding: 0.4rem 0.8rem;
+  padding: 0.6rem 1rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  background-color: #007bff;
-  color: white;
+  background-color: $primary-blue;
+  color: $white;
   transition: background-color 0.3s ease;
+  font-weight: 500;
 }
 
 .tableButton:hover {
-  background-color: #0056b3;
+  background-color: darken($primary-blue, 10%);
 }
 
 .deleteButton {
-  background-color: #dc3545;
+  background-color: #FF3B30; /* Apple Red */
 }
 
 .deleteButton:hover {
-  background-color: #c82333;
+  background-color: darken(#FF3B30, 10%);
 }
 
 .saveButton {
-  background-color: #28a745;
+  background-color: #34C759; /* Apple Green */
 }
 
 .saveButton:hover {
-  background-color: #218838;
+  background-color: darken(#34C759, 10%);
 }
 
 .cancelButton {
-  background-color: #6c757d;
+  background-color: $medium-gray;
+  color: $black;
 }
 
 .cancelButton:hover {
-  background-color: #5a6268;
+  background-color: darken($medium-gray, 10%);
 }
 
 .unknownPaymentRow {
@@ -217,8 +227,9 @@ $black: #000000;
   align-items: center;
   margin-top: 2rem;
   margin-bottom: 1rem;
-  border-bottom: 2px solid #eee;
+  border-bottom: 1px solid $medium-gray;
   padding-bottom: 0.5rem;
+  color: $black;
 }
 
 .transactionButtonsContainer {
@@ -254,42 +265,44 @@ $black: #000000;
 }
 
 .searchInput {
-  padding: 0.8rem; /* Increased padding for height */
+  padding: 0.8rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  flex: 1; /* Allow inputs to grow and shrink */
-  min-width: 150px; /* Minimum width for search inputs */
-  margin-bottom: 0.5rem; /* Added bottom margin */
+  flex: 1;
+  min-width: 150px;
+  margin-bottom: 0.5rem;
 }
 
 .clipboardButton {
-  background-color: #6c757d;
-  color: white;
-  padding: 0.6rem 1.5rem;
+  background-color: $medium-gray;
+  color: $black;
+  padding: 0.8rem 1.5rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
   transition: background-color 0.2s ease-in-out;
   margin-right: 0.5rem;
+  font-weight: 500;
 }
 
 .clipboardButton:hover {
-  background-color: #5a6268;
+  background-color: darken($medium-gray, 10%);
 }
 
 .copyAllButton {
-  background-color: #007bff;
+  background-color: $primary-blue;
+  color: $white;
 }
 
 .copyAllButton:hover {
-  background-color: #0056b3;
+  background-color: darken($primary-blue, 10%);
 }
 
 .copySectionContainer {
   margin-top: 3rem;
   padding-top: 1rem;
-  border-top: 2px solid #eee;
+  border-top: 1px solid $medium-gray;
 }
 
 .copyButtonsContainer {
