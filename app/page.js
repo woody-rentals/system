@@ -802,12 +802,12 @@ export default function Home() {
     const uniqueCustomers = customerNames.size;
     const avgSpendPerTransaction = totalTransactions > 0 ? calculatedOverallTotal / totalTransactions : 0;
     const avgSpendPerCustomer = uniqueCustomers > 0 ? calculatedOverallTotal / uniqueCustomers : 0;
-    const paymentMethodBreakdown = combinedDataForMetrics.reduce((acc, row) => {
-        const method = row['決済方法'];
-        if (!method) return acc;
-        if (!acc[method]) acc[method] = { sales: 0, count: 0 };
-        acc[method].sales += row.amount;
-        acc[method].count += 1;
+    const paymentToolBreakdown = combinedDataForMetrics.reduce((acc, row) => {
+        const tool = row['tool']; // Use transaction.tool for breakdown
+        if (!tool) return acc;
+        if (!acc[tool]) acc[tool] = { sales: 0, count: 0 };
+        acc[tool].sales += row.amount;
+        acc[tool].count += 1;
         return acc;
     }, {});
 
@@ -819,7 +819,7 @@ export default function Home() {
       return acc;
     }, {});
 
-    setMarketingMetrics({ totalRevenue: calculatedOverallTotal, totalTransactions, uniqueCustomers, avgSpendPerTransaction, avgSpendPerCustomer, paymentMethodBreakdown, windowBreakdown });
+    setMarketingMetrics({ totalRevenue: calculatedOverallTotal, totalTransactions, uniqueCustomers, avgSpendPerTransaction, avgSpendPerCustomer, paymentToolBreakdown, windowBreakdown });
   };
 
   const handleDuplicateAction = (action) => {
@@ -1253,7 +1253,6 @@ export default function Home() {
               </thead>
               <tbody>
                 {Object.entries(cashCounts)
-                  .sort(([denomA], [denomB]) => parseInt(denomB) - parseInt(denomA))
                   .map(([denomination, count]) => (
                   <tr key={denomination}>
                     <td>{denomination}円</td>
@@ -1296,10 +1295,10 @@ export default function Home() {
                 <tr><td><strong>ユニーク顧客数</strong></td><td>{marketingMetrics.uniqueCustomers.toLocaleString()}人</td></tr>
                 <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
                 <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer).toLocaleString()}円</td></tr>
-                {Object.entries(marketingMetrics.paymentMethodBreakdown).map(([method, data]) => [
-                    <tr key={`${method}-header`}><td colSpan="2"><strong>決済方法別: {method}</strong></td></tr>,
-                    <tr key={`${method}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{data.sales.toLocaleString()}円</td></tr>,
-                    <tr key={`${method}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{data.count.toLocaleString()}件</td></tr>
+                {Object.entries(marketingMetrics.paymentToolBreakdown).map(([tool, data]) => [
+                    <tr key={`${tool}-header`}><td colSpan="2"><strong>決済ツール別: {tool}</strong></td></tr>,
+                    <tr key={`${tool}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{data.sales.toLocaleString()}円</td></tr>,
+                    <tr key={`${tool}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{data.count.toLocaleString()}件</td></tr>
                 ])}
                 {Object.entries(marketingMetrics.windowBreakdown).map(([window, count]) => {
                   const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
