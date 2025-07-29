@@ -96,6 +96,10 @@ $black: #000000;
   white-space: nowrap; /* Prevent text wrapping */
 }
 
+.paymentToolColumn {
+  min-width: 10rem;
+}
+
 .table th {
   background-color: #247698;
   color: white;

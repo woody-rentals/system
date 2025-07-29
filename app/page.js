@@ -23,6 +23,7 @@ export default function Home() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateModalData, setDuplicateModalData] = useState(null);
   const [actualSalesInput, setActualSalesInput] = useState({}); // New state for actual sales input
+  const [parentCategoryActualSums, setParentCategoryActualSums] = useState({}); // New state for parent category actual sums
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
@@ -52,6 +53,18 @@ export default function Home() {
       processAllData(csvData, manualSlips, unknownPaymentToolData);
     }
   }, [csvData, manualSlips, unknownPaymentToolData]);
+
+  useEffect(() => {
+    // Calculate parent category actual sums whenever actualSalesInput or paymentTableDisplayData changes
+    const newParentSums = {};
+    paymentTableDisplayData.forEach(item => {
+      if (item.中分類 && item.中分類 !== '' && actualSalesInput[item.大分類 + ' - ' + item.中分類]) {
+        const parentKey = item.大分類;
+        newParentSums[parentKey] = (newParentSums[parentKey] || 0) + (parseFloat(actualSalesInput[item.大分類 + ' - ' + item.中分類]) || 0);
+      }
+    });
+    setParentCategoryActualSums(newParentSums);
+  }, [actualSalesInput, paymentTableDisplayData]);
 
   useEffect(() => {
     let filtered = knownTransactionsData;
@@ -949,7 +962,7 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>決済ツール不明の取引</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
-              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th style={{ minWidth: '10rem' }}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
               <tbody>
                 {unknownPaymentToolData.map((item, index) => {
                   console.log('Unknown item:', item);
@@ -958,7 +971,7 @@ export default function Home() {
                     <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
                     <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td className={styles.amountCell}>{item.金額.toLocaleString()}円</td>
                     <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
-                    <td style={{ minWidth: '10rem' }}>
+                    <td className={styles.paymentToolColumn}>
                       <select value={item.selectedPaymentTool || ''} onChange={(e) => handleUnknownPaymentToolChange(index, e.target.value)} className={styles.tableSelect}>
                         <option value="">選択してください</option>
                         {paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -1089,6 +1102,89 @@ export default function Home() {
         </>
       )}
 
+      {isClient && paymentTableDisplayData.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>実売上計算ツール</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>分類</th>
+                  <th>データの金額</th>
+                  <th>実売上額</th>
+                  <th>結果</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentTableDisplayData.map((item, index) => {
+                  const key = item.大分類 + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                  const calculatedAmount = item.合計売上金額 || 0;
+                  const inputAmount = parseFloat(actualSalesInput[key]) || 0;
+                  const difference = inputAmount - calculatedAmount;
+                  const isMatch = difference === 0;
+                  const isParentCategory = item.isTotalRow;
+                  const isMiddleCategory = item.中分類 && !item.小分類;
+                  const isDisabledRow = item.isTotalRow; // Define isDisabledRow here
+
+                  return (
+                    <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
+                      <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
+                      <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
+                      <td>
+                        {isParentCategory && !isMiddleCategory ? (
+                          <span>{parentCategoryActualSums[item.大分類] ? parentCategoryActualSums[item.大分類].toLocaleString() + '円' : '-'}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={actualSalesInput[key] || ''}
+                            onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
+                            className={styles.formInputSingleRow}
+                            disabled={isDisabledRow} // Disable input only for total rows
+                          />
+                        )}
+                      </td>
+                      <td>
+                        {inputAmount !== 0 && (
+                          isMatch ? (
+                            <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
+                          ) : (
+                            <span style={{ color: 'red', fontWeight: 'bold' }}>
+                              {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
+                            </span>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>合計</strong></td>
+                  <td className={styles.amountCell}><strong>{overallTotal.toLocaleString()}円</strong></td>
+                  <td className={styles.amountCell}><strong>{Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0).toLocaleString()}円</strong></td>
+                  <td>
+                    {(() => {
+                      const totalInput = Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+                      const totalDifference = totalInput - overallTotal;
+                      if (totalDifference === 0) {
+                        return <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>;
+                      } else {
+                        return (
+                          <span style={{ color: 'red', fontWeight: 'bold' }}>
+                            {totalDifference > 0 ? `+${totalDifference.toLocaleString()}円` : `${totalDifference.toLocaleString()}円`} ({totalDifference > 0 ? '多い' : '少ない'})
+                          </span>
+                        );
+                      }
+                    })()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+
       {isClient && marketingMetrics && (
         <>
           <h2 className={styles.sectionTitle}>マーケティング指標</h2>
@@ -1110,59 +1206,6 @@ export default function Home() {
                   const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
                   return (
                     <tr key={`${window}-count`}><td><strong>窓口別: {window}</strong></td><td>{count.toLocaleString()}件 ({percentage}%)</td></tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {isClient && paymentTableDisplayData.length > 0 && (
-        <>
-          <h2 className={styles.sectionTitle}>実売上計算ツール</h2>
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>分類</th>
-                  <th>計算金額</th>
-                  <th>入力金額</th>
-                  <th>結果</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentTableDisplayData.map((item, index) => {
-                  const key = item.大分類 + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
-                  const calculatedAmount = item.合計売上金額 || 0;
-                  const inputAmount = parseFloat(actualSalesInput[key]) || 0;
-                  const difference = inputAmount - calculatedAmount;
-                  const isMatch = difference === 0;
-
-                  return (
-                    <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
-                      <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
-                      <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
-                      <td>
-                        <input
-                          type="number"
-                          value={actualSalesInput[key] || ''}
-                          onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
-                          className={styles.formInputSingleRow}
-                        />
-                      </td>
-                      <td>
-                        {inputAmount !== 0 && (
-                          isMatch ? (
-                            <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
-                          ) : (
-                            <span style={{ color: 'red', fontWeight: 'bold' }}>
-                              {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
-                            </span>
-                          )
-                        )}
-                      </td>
-                    </tr>
                   );
                 })}
               </tbody>
