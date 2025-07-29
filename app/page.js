@@ -15,6 +15,7 @@ export default function Home() {
   const [applicationNumberTotals, setApplicationNumberTotals] = useState({}); // New state for application number totals
   
   const [hasProcessed, setHasProcessed] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState(''); // New state for uploaded file name
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [checkedRows, setCheckedRows] = useState({});
@@ -104,6 +105,7 @@ export default function Home() {
           return;
         }
         setCsvData(results.data.map((row, index) => ({ ...row, originalIndex: index })));
+        setUploadedFileName(file.name); // Set the uploaded file name
         // Initialize unknownPaymentToolData with all potentially unknown items from CSV
         const initialUnknownData = results.data.map((row, index) => ({ ...row, originalIndex: index })).filter(row => {
           const tool = row['決済ツール名'];
@@ -852,6 +854,7 @@ export default function Home() {
         <input id="file-upload" type="file" accept=".csv" onChange={(e) => processFile(e.target.files[0])} className={styles.fileInput} />
         <label htmlFor="file-upload" className={styles.fileInputLabel}>ファイルを選択</label>
       </div>
+      {uploadedFileName && <p className={styles.uploadedFileName}>読み込んだファイル名: {uploadedFileName}</p>}
       {error && <p className={styles.errorMessage}>{error}</p>}
       
       {isClient && (hasProcessed || manualSlips.length > 0) && paymentTableDisplayData.length > 0 && (
@@ -945,7 +948,7 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>決済ツール不明の取引</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
-              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th style={{ width: '20em' }}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th style={{ minWidth: '10rem' }}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
               <tbody>
                 {unknownPaymentToolData.map((item, index) => {
                   console.log('Unknown item:', item);
@@ -954,7 +957,7 @@ export default function Home() {
                     <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
                     <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td className={styles.amountCell}>{item.金額.toLocaleString()}円</td>
                     <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
-                    <td style={{ width: '20em' }}>
+                    <td style={{ minWidth: '10rem' }}>
                       <select value={item.selectedPaymentTool || ''} onChange={(e) => handleUnknownPaymentToolChange(index, e.target.value)} className={styles.tableSelect}>
                         <option value="">選択してください</option>
                         {paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -1098,14 +1101,14 @@ export default function Home() {
                 <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
                 <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer).toLocaleString()}円</td></tr>
                 {Object.entries(marketingMetrics.paymentMethodBreakdown).map(([method, data]) => [
-                    <tr key={`${method}-header`}><td colSpan="2"><strong>決済方法別: ${method}</strong></td></tr>,
+                    <tr key={`${method}-header`}><td colSpan="2"><strong>決済方法別: {method}</strong></td></tr>,
                     <tr key={`${method}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{data.sales.toLocaleString()}円</td></tr>,
                     <tr key={`${method}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{data.count.toLocaleString()}件</td></tr>
                 ])}
                 {Object.entries(marketingMetrics.windowBreakdown).map(([window, count]) => {
                   const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
                   return (
-                    <tr key={`${window}-count`}><td style={{ paddingLeft: '2em' }}>窓口別: ${window}</td><td>{count.toLocaleString()}件 ({percentage}%)</td></tr>
+                    <tr key={`${window}-count`}><td><strong>窓口別: {window}</strong></td><td>{count.toLocaleString()}件 ({percentage}%)</td></tr>
                   );
                 })}
               </tbody>
