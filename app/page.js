@@ -24,6 +24,10 @@ export default function Home() {
   const [duplicateModalData, setDuplicateModalData] = useState(null);
   const [actualSalesInput, setActualSalesInput] = useState({}); // New state for actual sales input
   const [parentCategoryActualSums, setParentCategoryActualSums] = useState({}); // New state for parent category actual sums
+  const [cashCounts, setCashCounts] = useState({ '10000': 0, '5000': 0, '1000': 0, '500': 0, '100': 0, '50': 0, '10': 0, '5': 0, '1': 0 });
+  const [totalCashAmount, setTotalCashAmount] = useState(0);
+  const [registerAmount, setRegisterAmount] = useState(50500); // レジ金の初期値
+  const [finalCashTotal, setFinalCashTotal] = useState(0); // 最終的な現金合計
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
@@ -65,6 +69,19 @@ export default function Home() {
     });
     setParentCategoryActualSums(newParentSums);
   }, [actualSalesInput, paymentTableDisplayData]);
+
+  useEffect(() => {
+    // Calculate total cash amount whenever cashCounts changes
+    const newTotal = Object.entries(cashCounts).reduce((sum, [denomination, count]) => {
+      return sum + (parseInt(denomination) * (parseInt(count) || 0));
+    }, 0);
+    setTotalCashAmount(newTotal);
+  }, [cashCounts]);
+
+  useEffect(() => {
+    // Calculate final cash total (totalCashAmount - registerAmount)
+    setFinalCashTotal(totalCashAmount - registerAmount);
+  }, [totalCashAmount, registerAmount]);
 
   useEffect(() => {
     let filtered = knownTransactionsData;
@@ -847,6 +864,30 @@ export default function Home() {
     setDuplicateModalData(null);
   };
 
+  const handleCashCountChange = (denomination, value) => {
+    setCashCounts(prev => ({
+      ...prev,
+      [denomination]: value === '' ? '' : parseInt(value) || 0
+    }));
+  };
+
+  const handleCopyCashTotal = () => {
+    if (finalCashTotal === 0) {
+      alert('コピーする金額がありません。');
+      return;
+    }
+    navigator.clipboard.writeText(finalCashTotal.toLocaleString()).then(() => {
+      alert('現金合計額がクリップボードにコピーされました。');
+    }).catch(err => {
+      console.error('クリップボードへのコピーに失敗しました:', err);
+      alert('クリップボードへのコピーに失敗しました。');
+    });
+  };
+
+  const handleRegisterAmountChange = (e) => {
+    setRegisterAmount(parseInt(e.target.value) || 0);
+  };
+
   return (
     <div className={styles.container}>
       {showDuplicateModal && duplicateModalData && (
@@ -1177,6 +1218,64 @@ export default function Home() {
                         );
                       }
                     })()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+
+      {isClient && (
+        <>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>現金計算ツール</h2>
+            <div className={styles.registerAmountContainer}>
+              <label htmlFor="registerAmountInput">レジ金設定:</label>
+              <input
+                id="registerAmountInput"
+                type="number"
+                value={registerAmount}
+                onChange={handleRegisterAmountChange}
+                className={styles.formInputSingleRow}
+                min="0"
+              />円
+            </div>
+          </div>
+          <div className={styles.tableContainer}>
+            <table className={`${styles.table} ${styles.cashCalculatorTable}`}>
+              <thead>
+                <tr>
+                  <th>金種</th>
+                  <th>枚数</th>
+                  <th>金額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(cashCounts)
+                  .sort(([denomA], [denomB]) => parseInt(denomB) - parseInt(denomA))
+                  .map(([denomination, count]) => (
+                  <tr key={denomination}>
+                    <td>{denomination}円</td>
+                    <td>
+                      <input
+                        type="number"
+                        value={count === 0 ? '' : count}
+                        onChange={(e) => handleCashCountChange(denomination, e.target.value)}
+                        className={styles.formInputSingleRow}
+                        min="0"
+                      />
+                    </td>
+                    <td className={styles.amountCell}>{(parseInt(denomination) * count).toLocaleString()}円</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>合計</strong></td>
+                  <td></td>
+                  <td className={styles.amountCell}><strong>{finalCashTotal.toLocaleString()}円</strong>
+                    <button onClick={handleCopyCashTotal} className={`${styles.tableButton} ${styles.smallButton} ${styles.cashCopyButton}`}>コピー</button>
                   </td>
                 </tr>
               </tfoot>

@@ -406,3 +406,34 @@ $black: #000000;
   margin-top: 0.5rem;
   text-align: center;
 }
+
+.cashCalculatorTable {
+  .formInputSingleRow {
+    padding: 0.4rem;
+    min-width: 80px;
+  }
+  th,
+  td {
+    padding: 0.5rem;
+  }
+}
+
+.cashCopyButton {
+  margin-left: 2rem;
+}
+
+.registerAmountContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0; /* sectionHeaderがmargin-bottomを持つため0に設定 */
+
+  label {
+    white-space: nowrap;
+  }
+
+  input {
+    width: 70px; /* 幅を調整 */
+    text-align: right;
+  }
+}
