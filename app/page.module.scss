@@ -1,0 +1,376 @@
+.container {
+  padding: 2rem;
+  width: 90vw;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  text-align: center;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-bottom: 2rem;
+  background-color: #f9f9f9;
+}
+
+.dropzone.dragging {
+  background-color: #e0e0e0;
+}
+
+.fileInput {
+  display: none;
+}
+
+.fileInputLabel {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.fileInputLabel:hover {
+  background-color: #0056b3;
+}
+
+.errorMessage {
+  color: red;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.sectionTitle {
+  color: #333;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+  border: 0.5px solid #ddd;
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px; /* Ensure table is wide enough for content */
+}
+
+.table th,
+.table td {
+  border: 0.5px solid #ddd;
+  padding: 0.8rem;
+  text-align: left;
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.table th {
+  background-color: #247698;
+  color: white;
+  font-weight: bold;
+}
+
+
+
+.table tfoot td {
+  font-weight: bold;
+  background-color: #e9e9e9;
+}
+
+.middleCategoryRow {
+  background-color: #f0f0f0; /* Light gray for middle category totals */
+}
+
+.subCategoryRow {
+  background-color: #f8f8f8; /* Lighter gray for sub-category items */
+}
+
+.amountCell {
+  text-align: right;
+}
+
+.formContainerSingleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.formInputSingleRow,
+.formSelectSingleRow {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 120px; /* Adjust as needed */
+}
+
+.formButtonsContainer {
+  flex-basis: 100%; /* Take full width on small screens */
+  display: flex;
+  justify-content: flex-end;
+}
+
+.formButtonSingleRow {
+  background-color: #28a745;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.formButtonSingleRow:hover {
+  background-color: #218838;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.tableButton {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.tableButton:hover {
+  background-color: #0056b3;
+}
+
+.deleteButton {
+  background-color: #dc3545;
+}
+
+.deleteButton:hover {
+  background-color: #c82333;
+}
+
+.saveButton {
+  background-color: #28a745;
+}
+
+.saveButton:hover {
+  background-color: #218838;
+}
+
+.cancelButton {
+  background-color: #6c757d;
+}
+
+.cancelButton:hover {
+  background-color: #5a6268;
+}
+
+.unknownPaymentRow {
+  background-color: #fff3cd; /* Light yellow for unknown payment rows */
+}
+
+.editedUnknownRow {
+  background-color: #d4edda; /* Light green for edited unknown rows */
+}
+
+.headerButtons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.transactionButtonsContainer {
+  display: flex;
+  gap: 1rem;
+}
+
+.smallButton {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.fileInputContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.fileInputContainer input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.searchInputContainer {
+  display: flex;
+  gap: 0.5rem;
+  flex-grow: 1; /* Allow search inputs to take available space */
+  flex-wrap: wrap; /* Allow search inputs to wrap */
+}
+
+.searchInput {
+  padding: 0.8rem; /* Increased padding for height */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  flex: 1; /* Allow inputs to grow and shrink */
+  min-width: 150px; /* Minimum width for search inputs */
+  margin-bottom: 0.5rem; /* Added bottom margin */
+}
+
+.clipboardButton {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease-in-out;
+  margin-right: 0.5rem;
+}
+
+.clipboardButton:hover {
+  background-color: #5a6268;
+}
+
+.copyAllButton {
+  background-color: #007bff;
+}
+
+.copyAllButton:hover {
+  background-color: #0056b3;
+}
+
+.copySectionContainer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 2px solid #eee;
+}
+
+.copyButtonsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modalButtons {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+}
+
+.modalButton {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease-in-out;
+  background-color: #0070f3; /* Example primary color */
+  color: white;
+
+  &:hover {
+    background-color: #005bb5; /* Darker shade on hover */
+  }
+
+  /* Specific styles for different actions */
+  &.cancelButton {
+    background-color: #dc3545; /* Red for cancel */
+    &:hover {
+      background-color: #c82333;
+    }
+  }
+
+  &.addButton {
+    background-color: #28a745; /* Green for add */
+    &:hover {
+      background-color: #218838;
+    }
+  }
+}
+
+.tableSelect {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.9rem;
+  width: 100%; /* Adjust as needed */
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M208.5%2096.5L128%20177L47.5%2096.5z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.8em;
+}
+
+.tableSelect:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

@@ -13,4 +13,5 @@ export const paymentToolOptions = [
   'ふるさと納税',
   '信州割',
   'その他',
+  '事前カード',
 ];
