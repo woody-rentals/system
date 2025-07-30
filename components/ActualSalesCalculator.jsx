@@ -54,7 +54,8 @@ export default function ActualSalesCalculator({
                 const key = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
                 const calculatedAmount = item.合計売上金額 || 0;
                 const inputAmount = parseFloat(actualSalesInput[key]) || 0;
-                const difference = inputAmount - calculatedAmount;
+                const itemTotalAmount = item.isTotalRow ? (parentCategoryActualSums[item.大分類] || 0) : inputAmount;
+                const difference = itemTotalAmount - calculatedAmount;
                 const isMatch = difference === 0;
 
                 return (
@@ -76,15 +77,15 @@ export default function ActualSalesCalculator({
                       {item.isTotalRow ? `${(parentCategoryActualSums[item.大分類] || 0).toLocaleString()}円` : ''}
                     </td>
                     <td>
-                      {inputAmount !== 0 && (
-                        isMatch ? (
-                          <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
-                        ) : (
-                          <span style={{ color: 'red', fontWeight: 'bold' }}>
-                            {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
-                          </span>
-                        )
-                      )}
+                      {itemTotalAmount !== 0 && (
+                      isMatch ? (
+                        <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
+                      ) : (
+                        <span style={{ color: 'red', fontWeight: 'bold' }}>
+                          {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
+                        </span>
+                      )
+                    )}
                     </td>
                   </tr>
                 );
@@ -95,7 +96,20 @@ export default function ActualSalesCalculator({
             <tr>
               <td><strong>合計</strong></td>
               <td className={styles.amountCell}><strong>{overallTotal.toLocaleString()}円</strong></td>
-              <td className={styles.amountCell}><strong>{Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0).toLocaleString()}円</strong></td>
+              <td className={styles.amountCell}><strong>{Object.entries(actualSalesInput).reduce((sum, [key, val]) => {
+                const item = paymentTableDisplayData.find(item => {
+                  let currentMainCategory = '';
+                  if (item.isTotalRow) {
+                    currentMainCategory = item.大分類;
+                  }
+                  const itemKey = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                  return itemKey === key;
+                });
+                if (item && item.小分類) {
+                  return sum;
+                }
+                return sum + (parseFloat(val) || 0);
+              }, 0).toLocaleString()}円</strong></td>
               <td></td>
               <td>
                 {(() => {
