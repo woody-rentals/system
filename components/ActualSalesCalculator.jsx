@@ -6,13 +6,28 @@ export default function ActualSalesCalculator({
   actualSalesInput, 
   setActualSalesInput, 
   overallTotal, 
-  parentCategoryActualSums 
+  parentCategoryActualSums, 
+  showSubCategories, 
+  setShowSubCategories 
 }) {
   if (paymentTableDisplayData.length === 0) return null;
 
   return (
     <>
-      <h2 id="actual-sales-calculator" className={styles.sectionTitle}>実売上計算ツール</h2>
+      <div className={styles.sectionHeader}>
+        <h2 id="actual-sales-calculator" className={styles.sectionTitle}>実売上計算ツール</h2>
+        <div className={styles.toggleSwitchContainer}>
+          <label className={styles.toggleSwitch}>
+            <input
+              type="checkbox"
+              checked={showSubCategories}
+              onChange={() => setShowSubCategories(!showSubCategories)}
+            />
+            <span className={styles.slider}></span>
+          </label>
+          <span className={styles.toggleLabel}>小分類を表示</span>
+        </div>
+      </div>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -31,6 +46,11 @@ export default function ActualSalesCalculator({
                 if (item.isTotalRow) {
                   currentMainCategory = item.大分類;
                 }
+
+                if (!showSubCategories && item.小分類) {
+                  return null;
+                }
+
                 const key = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
                 const calculatedAmount = item.合計売上金額 || 0;
                 const inputAmount = parseFloat(actualSalesInput[key]) || 0;

@@ -39,6 +39,7 @@ export default function Home() {
   const [registerAmount, setRegisterAmount] = useState(50500); // レジ金の初期値
   const [finalCashTotal, setFinalCashTotal] = useState(0); // 最終的な現金合計
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
+  const [showSubCategories, setShowSubCategories] = useState(false);
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '', type: '一般' }); // Added type for slip
@@ -1043,6 +1044,8 @@ export default function Home() {
           setActualSalesInput={setActualSalesInput} 
           overallTotal={overallTotal} 
           parentCategoryActualSums={parentCategoryActualSums}
+          showSubCategories={showSubCategories}
+          setShowSubCategories={setShowSubCategories}
         />
       )}
 
