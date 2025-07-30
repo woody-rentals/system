@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import styles from "./page.module.scss";
@@ -32,7 +32,7 @@ export default function Home() {
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
 
   // State for manual entry form
-  const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
+  const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '', type: '一般' }); // Added type for slip
 
   // State for editing slips
   const [editingSlipId, setEditingSlipId] = useState(null);
@@ -178,7 +178,8 @@ export default function Home() {
           name: row.name || '',
           amount: parseFloat(row.amount) || 0,
           paymentTool: row.paymentTool || 'Cash',
-          memo: row.memo || ''
+          memo: row.memo || '',
+          type: row.type || '一般' // Default to '一般' if not specified
         })).filter(slip => slip.amount > 0); // Only add valid slips
 
         if (allNewData.length > 0) {
@@ -207,7 +208,7 @@ export default function Home() {
     }
     const newSlip = { ...formInput, id: Date.now(), amount: parseFloat(formInput.amount) };
     setManualSlips(prev => [...prev, newSlip]);
-    setFormInput({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
+    setFormInput({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '', type: '一般' });
   };
 
   const handleEditClick = (slip) => {
@@ -359,7 +360,7 @@ export default function Home() {
     const tsvString = [headerString, ...rows].join('\n');
 
     navigator.clipboard.writeText(tsvString).then(() => {
-      alert('取引一覧がクリップボードにコピーされました。\nGoogleスプレッドシートに貼り付けてください。');
+      alert('取引一覧がクリップボードにコピーされました.\nGoogleスプレッドシートに貼り付けてください。');
     }).catch(err => {
       console.error('クリップボードへのコピーに失敗しました:', err);
       alert('クリップボードへのコピーに失敗しました。');
@@ -543,7 +544,8 @@ export default function Home() {
       'name': slip.name || '',
       'amount': slip.amount || 0,
       'paymentTool': slip.paymentTool || '',
-      'memo': slip.memo || ''
+      'memo': slip.memo || '',
+      'type': slip.type || '一般'
     }));
 
     const now = new Date();
@@ -662,14 +664,6 @@ export default function Home() {
   };
 
   const processAllData = (currentCsvData, currentManualSlips, currentUnknownPaymentToolData) => {
-    console.log('--- processAllData START ---');
-    console.log('currentUnknownPaymentToolData at start of processAllData:', currentUnknownPaymentToolData);
-
-    const salesByTool = {}; // This will temporarily include '不明' as a key
-    const knownTransactions = [];
-    const tempApplicationNumberTotals = {};
-
-    // 1. Create a unified list of all transactions (CSV + manual)
     const allTransactions = [
       ...currentCsvData.map((row, index) => ({
         ...row,
@@ -679,85 +673,71 @@ export default function Home() {
       })),
       ...currentManualSlips.map(slip => ({
         ...slip,
-        // Manual slips already have a unique `id` from Date.now()
         amount: parseFloat(slip.amount),
         source: 'manual',
         '申込番号': slip.slipNumber ? `伝票 ${slip.slipNumber}` : '',
         'お名前': slip.name,
         'メモ': slip.memo,
-        '決済方法': '', // Set payment method to blank for manual slips
-        '決済ツール名': slip.paymentTool // Manual slips have known payment tool
+        '決済方法': '',
+        '決済ツール名': slip.paymentTool,
+        type: slip.type || '一般'
       }))
-    ].filter(t => !isNaN(t.amount)); // Filter out invalid amounts early
+    ].filter(t => !isNaN(t.amount));
 
-    // 2. Determine the final payment tool for each transaction and aggregate
+    const knownTransactions = [];
+    const salesByTool = {};
+    const tempApplicationNumberTotals = {};
+
     allTransactions.forEach(transaction => {
       const amount = transaction.amount;
       let finalTool = '';
       let finalMethod = transaction['決済方法'];
 
-      // Calculate application number totals for display in unknown table
       if (transaction.申込番号) {
         if (!tempApplicationNumberTotals[transaction.申込番号]) tempApplicationNumberTotals[transaction.申込番号] = 0;
         tempApplicationNumberTotals[transaction.申込番号] += amount;
       }
 
       if (transaction.source === 'csv') {
-        console.log('Processing CSV transaction:', transaction.originalIndex, 'Amount:', transaction['金額'], 'Method:', transaction['決済方法'], 'Tool:', transaction['決済ツール名']);
-        // Check if this CSV row corresponds to an item in unknownPaymentToolData that has been assigned a tool
         const assignedToolItem = currentUnknownPaymentToolData.find(item =>
           item.originalIndex === transaction.originalIndex && item.selectedPaymentTool && item.selectedPaymentTool !== ''
         );
 
         if (assignedToolItem) {
-          // User has assigned a tool for this previously unknown transaction
           finalTool = assignedToolItem.selectedPaymentTool;
-          finalMethod = assignedToolItem.決済方法 || finalMethod; // Use assigned method if available
+          finalMethod = assignedToolItem.決済方法 || finalMethod;
         } else if (finalMethod && finalMethod.trim().toLowerCase() === 'カード払い') {
-          // Special rule: 'カード払い' always becomes '事前カード'
           finalTool = '事前カード';
         } else if (transaction['決済ツール名'] && transaction['決済ツール名'].trim() !== '' && transaction['決済ツール名'].trim().toLowerCase() !== '不明') {
-          // This is a known tool from the original CSV
           finalTool = transaction['決済ツール名'];
         } else if ((!transaction['決済ツール名'] || transaction['決済ツール名'].trim() === '' || transaction['決済ツール名'].trim().toLowerCase() === '不明') && (finalMethod && (finalMethod.trim().toLowerCase() === '現地決済' || finalMethod.trim().toLowerCase() === '現地払い'))) {
-          // This is a truly unknown item from CSV (現地決済/現地払い with no tool)
           finalTool = '不明';
         } else {
-          // Fallback for any other unhandled CSV cases, treat as unknown
           finalTool = '不明';
         }
       } else if (transaction.source === 'manual') {
-        // Manual slips always have a known payment tool
         finalTool = transaction.paymentTool;
       }
 
-      // Add to salesByTool (which will now include '不明' as a key for aggregation)
       if (finalTool) {
         if (!salesByTool[finalTool]) salesByTool[finalTool] = 0;
         salesByTool[finalTool] += amount;
-        // Always add to knownTransactions, and add flags for unknown/resolved status
         knownTransactions.push({
           ...transaction,
           amount,
           tool: finalTool,
           method: finalMethod,
           isUnknownPaymentTool: (finalTool === '不明'),
-          // Ensure original CSV fields are passed through for display
-          'プロモコード': transaction['プロモコード'],
-          '窓口': transaction['窓口']
         });
-        console.log('Transaction added to knownTransactions:', knownTransactions[knownTransactions.length - 1]);
       }
     });
 
     setKnownTransactionsData(knownTransactions);
     setApplicationNumberTotals(tempApplicationNumberTotals);
 
-    // 3. Separate '不明' from salesByTool for final display and calculate overall total
     const finalUnknownTotal = salesByTool['不明'] || 0;
-    delete salesByTool['不明']; // Remove '不明' from salesByTool for display purposes
+    delete salesByTool['不明'];
 
-    // 4. Aggregate sales for display in the payment table
     const appGroup = ['R Pay', 'AU Pay'];
     const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO'];
     const creditCardGroup = ['Credit Card'];
@@ -774,7 +754,6 @@ export default function Home() {
       }
     }
 
-    // Ensure 'Cash' is always present for the actual sales calculator
     if (otherSales['Cash'] === undefined) {
       otherSales['Cash'] = 0;
     }
@@ -784,10 +763,6 @@ export default function Home() {
     const calculatedOverallTotal = rakutenGrandTotal + otherGrandTotal + finalUnknownTotal;
 
     setOverallTotal(calculatedOverallTotal);
-    console.log('### DEBUG ### Final salesByTool (excluding 不明):', salesByTool);
-    console.log('### DEBUG ### Final unknownTotal:', finalUnknownTotal);
-    console.log('### DEBUG ### Calculated Overall Total:', calculatedOverallTotal);
-    console.log('### DEBUG ### --- processAllData END ---');
 
     const newPaymentTableData = [];
     newPaymentTableData.push({ 大分類: '楽天', 中分類: '', 小分類: '', 合計売上金額: rakutenGrandTotal, isTotalRow: true });
@@ -806,98 +781,116 @@ export default function Home() {
     if (finalUnknownTotal > 0) newPaymentTableData.push({ 大分類: '不明', 中分類: '', 小分類: '', 合計売上金額: finalUnknownTotal });
     setPaymentTableDisplayData(newPaymentTableData);
 
-    // Marketing metrics calculation
-    const combinedDataForMetrics = knownTransactions; // Ensure only valid transactions are used
-    const transactionIds = new Set(combinedDataForMetrics.map(row => row['申込番号']).filter(id => id));
-    const customerNames = new Set(combinedDataForMetrics.map(row => row['お名前']).filter(name => name));
-    const totalTransactions = transactionIds.size;
-    const uniqueCustomers = customerNames.size;
+    // --- Marketing Metrics Calculation ---
+    const combinedDataForMetrics = knownTransactions;
+    const totalTransactions = combinedDataForMetrics.length;
+
+    const uniqueCustomerData = Array.from(
+      combinedDataForMetrics.reduce((map, row) => {
+        const name = row['お名前'];
+        if (name && !map.has(name)) {
+          map.set(name, {
+            age: row['年齢'] ? parseInt(row['年齢'], 10) : null,
+            nationality: row['国籍'] || '不明'
+          });
+        }
+        return map;
+      }, new Map()).values()
+    );
+
+    const uniqueCustomers = uniqueCustomerData.length;
     const avgSpendPerTransaction = totalTransactions > 0 ? calculatedOverallTotal / totalTransactions : 0;
     const avgSpendPerCustomer = uniqueCustomers > 0 ? calculatedOverallTotal / uniqueCustomers : 0;
+
     const paymentToolBreakdown = combinedDataForMetrics.reduce((acc, row) => {
-        const tool = row['tool']; // Use transaction.tool for breakdown
-        if (!tool) return acc;
-        if (!acc[tool]) acc[tool] = { sales: 0, count: 0 };
-        acc[tool].sales += row.amount;
-        acc[tool].count += 1;
-        return acc;
+      const tool = row['tool'];
+      if (!tool) return acc;
+      if (!acc[tool]) acc[tool] = { sales: 0, count: 0 };
+      acc[tool].sales += row.amount;
+      acc[tool].count += 1; // This is transaction count, will be updated to unique customer count later if needed
+      return acc;
     }, {});
 
     const windowBreakdown = combinedDataForMetrics.reduce((acc, row) => {
       const window = row['窓口'];
-      if (!window) return acc;
-      if (!acc[window]) acc[window] = 0;
-      acc[window] += 1;
+      const customerName = row['お名前'];
+      if (!window || !customerName) return acc;
+      if (!acc[window]) acc[window] = new Set();
+      acc[window].add(customerName);
+      return acc;
+    }, {});
+    const windowFinalBreakdown = Object.entries(windowBreakdown).reduce((acc, [key, value]) => ({...acc, [key]: value.size}), {});
+
+    const customersWithAge = uniqueCustomerData.filter(c => c.age !== null && !isNaN(c.age));
+    const averageAge = customersWithAge.length > 0
+      ? customersWithAge.reduce((sum, c) => sum + c.age, 0) / customersWithAge.length
+      : 0;
+
+    const customers12AndUnder = uniqueCustomerData.filter(c => c.age !== null && !isNaN(c.age) && c.age <= 12).length;
+    const percentage12AndUnder = uniqueCustomers > 0 ? (customers12AndUnder / uniqueCustomers) * 100 : 0;
+
+    const nationalityBreakdown = uniqueCustomerData.reduce((acc, customer) => {
+      const nationality = customer.nationality || '不明';
+      acc[nationality] = (acc[nationality] || 0) + 1;
       return acc;
     }, {});
 
-    setMarketingMetrics({ totalRevenue: calculatedOverallTotal, totalTransactions, uniqueCustomers, avgSpendPerTransaction, avgSpendPerCustomer, paymentToolBreakdown, windowBreakdown });
-  };
-
-  const handleDuplicateAction = (action) => {
-    if (!duplicateModalData) return;
-
-    const { type, duplicates, existingData, newData } = duplicateModalData;
-
-    if (type === 'manualSlips') {
-      const existingSlipNumbers = new Set(existingData.map(s => s.slipNumber));
-      if (action === 'replace') {
-        const updatedSlips = existingData.map(existing => {
-          const duplicate = duplicates.find(d => d.slipNumber === existing.slipNumber);
-          return duplicate ? { ...existing, ...duplicate } : existing;
-        });
-        const nonDuplicates = newData.filter(s => !existingSlipNumbers.has(s.slipNumber));
-        setManualSlips([...updatedSlips, ...nonDuplicates]);
-        alert('重複項目を置き換えて伝票を更新しました。');
-      } else if (action === 'add') {
-        setManualSlips(prev => [...prev, ...newData]);
-        alert(`${newData.length}件の伝票を追加しました。（重複を含む）`);
-      } else if (action === 'cancel') {
-        alert('アップロードをキャンセルしました。');
+    const hourlyBreakdown = combinedDataForMetrics.reduce((acc, row) => {
+      const time = row['決済時間'];
+      const customerName = row['お名前'];
+      if (time && typeof time === 'string' && customerName) {
+        const hour = time.split(':')[0];
+        if (hour && !isNaN(parseInt(hour))) {
+            const hourKey = `${parseInt(hour, 10).toString().padStart(2, '0')}:00`;
+            if (!acc[hourKey]) acc[hourKey] = new Set();
+            acc[hourKey].add(customerName);
+        }
       }
-    } else if (type === 'transactions') {
-      const existingApplicationNumbers = new Set(existingData.map(t => t.申込番号));
-      if (action === 'replace') {
-        const updatedTransactions = existingData.map(existing => {
-          const duplicate = duplicates.find(d => d.申込番号 === existing.申込番号);
-          return duplicate ? { ...existing, ...duplicate } : existing;
-        });
-        const nonDuplicates = newData.filter(t => !existingApplicationNumbers.has(t.申込番号));
-        setCsvData([...updatedTransactions, ...nonDuplicates]);
-        alert('重複項目を置き換えて取引を更新しました。');
-      } else if (action === 'add') {
-        setCsvData(prev => [...prev, ...newData]);
-        alert(`${newData.length}件の取引を追加しました。（重複を含む）`);
-      } else if (action === 'cancel') {
-        alert('アップロードをキャンセルしました。');
-      }
-    }
-    setShowDuplicateModal(false);
-    setDuplicateModalData(null);
-  };
+      return acc;
+    }, {});
+    const hourlyFinalBreakdown = Object.entries(hourlyBreakdown)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value.size }), {});
 
-  const handleCashCountChange = (denomination, value) => {
-    setCashCounts(prev => ({
-      ...prev,
-      [denomination]: value === '' ? '' : parseInt(value) || 0
-    }));
-  };
-
-  const handleCopyCashTotal = () => {
-    if (finalCashTotal === 0) {
-      alert('コピーする金額がありません。');
-      return;
-    }
-    navigator.clipboard.writeText(finalCashTotal.toLocaleString()).then(() => {
-      alert('現金合計額がクリップボードにコピーされました。');
-    }).catch(err => {
-      console.error('クリップボードへのコピーに失敗しました:', err);
-      alert('クリップボードへのコピーに失敗しました。');
+    setMarketingMetrics({
+      totalRevenue: calculatedOverallTotal,
+      totalTransactions,
+      uniqueCustomers,
+      avgSpendPerTransaction,
+      avgSpendPerCustomer,
+      paymentToolBreakdown, // Note: count is still transaction count here
+      windowBreakdown: windowFinalBreakdown,
+      averageAge,
+      customers12AndUnder,
+      percentage12AndUnder,
+      nationalityBreakdown,
+      hourlyBreakdown: hourlyFinalBreakdown
     });
   };
 
   const handleRegisterAmountChange = (e) => {
     setRegisterAmount(parseInt(e.target.value) || 0);
+  };
+
+  const handleCashCountChange = (denomination, value) => {
+    const count = parseInt(value, 10);
+    if (count < 0) {
+        alert("0以上の数値を入力してください。");
+        return;
+    }
+    setCashCounts(prevCounts => ({
+        ...prevCounts,
+        [denomination]: isNaN(count) ? 0 : count
+    }));
+  };
+
+  const handleCopyCashTotal = () => {
+    navigator.clipboard.writeText(finalCashTotal).then(() => {
+      alert('現金合計がクリップボードにコピーされました。');
+    }).catch(err => {
+      console.error('クリップボードへのコピーに失敗しました:', err);
+      alert('クリップボードへのコピーに失敗しました。');
+    });
   };
 
   return (
@@ -962,6 +955,17 @@ export default function Home() {
           handleFormSubmit(e); // Manually trigger the form submission handler
         }
       }} className={styles.formContainerSingleRow}>
+          <div className={styles.toggleSwitchContainer}>
+            <label className={styles.toggleSwitch}>
+              <input
+                type="checkbox"
+                checked={formInput.type === '物販'}
+                onChange={() => setFormInput(prev => ({ ...prev, type: prev.type === '一般' ? '物販' : '一般' }))}
+              />
+              <span className={styles.slider}></span>
+            </label>
+            <span className={styles.toggleLabel}>{formInput.type}</span>
+          </div>
           <input name="slipNumber" value={formInput.slipNumber} onChange={(e) => setFormInput({...formInput, slipNumber: e.target.value})} placeholder="伝票番号" className={styles.formInputSingleRow} />
           <input name="amount" value={formInput.amount} onChange={(e) => setFormInput({...formInput, amount: parseFloat(e.target.value) || 0})} placeholder="金額" type="number" className={styles.formInputSingleRow} />
           <select name="paymentTool" value={formInput.paymentTool} onChange={(e) => setFormInput({...formInput, paymentTool: e.target.value})} className={styles.formSelectSingleRow}>{paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
@@ -974,12 +978,12 @@ export default function Home() {
 
       {isClient && manualSlips.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>伝票一覧</h2>
+          <h2 className={styles.sectionTitle}>伝票一覧 (一般)</h2>
           <div className={styles.tableContainer}>
               <table className={styles.table}>
-                <thead><tr><th>伝票番号</th><th>金額</th><th>決済ツール</th><th>内容・メモ</th><th>名前</th><th>操作</th></tr></thead>
+                <thead><tr><th>伝票番号</th><th>金額</th><th>決済ツール</th><th>内容・メモ</th><th>名前</th><th>種別</th><th>操作</th></tr></thead>
                 <tbody>
-                  {manualSlips.map(slip => (
+                  {manualSlips.filter(slip => slip.type === '一般').map(slip => (
                     <tr key={slip.id}>
                       {editingSlipId === slip.id ? (
                         <>
@@ -995,7 +999,7 @@ export default function Home() {
                         </>
                       ) : (
                         <>
-                          <td>{slip.slipNumber}</td><td>{slip.amount.toLocaleString()}円</td><td>{slip.paymentTool}</td><td>{slip.memo}</td><td>{slip.name}</td>
+                          <td>{slip.slipNumber}</td><td>{slip.amount.toLocaleString()}円</td><td>{slip.paymentTool}</td><td>{slip.memo}</td><td>{slip.name}</td><td>{slip.type}</td>
                           <td className={styles.actionsCell}>
                             <button type="button" onClick={() => handleEditClick(slip)} className={styles.tableButton}>編集</button>
                             <button type="button" onClick={() => handleDeleteSlip(slip.id)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button>
@@ -1006,6 +1010,197 @@ export default function Home() {
                   ))}
                 </tbody>
               </table>
+          </div>
+
+          <h2 className={styles.sectionTitle}>伝票一覧 (物販)</h2>
+          <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead><tr><th>伝票番号</th><th>金額</th><th>決済ツール</th><th>内容・メモ</th><th>名前</th><th>種別</th><th>操作</th></tr></thead>
+                <tbody>
+                  {manualSlips.filter(slip => slip.type === '物販').map(slip => (
+                    <tr key={slip.id}>
+                      {editingSlipId === slip.id ? (
+                        <>
+                          <td><input type="text" value={editingSlipData.slipNumber} onChange={(e) => setEditingSlipData({...editingSlipData, slipNumber: e.target.value})} className={styles.tableInput} /></td>
+                          <td><input type="number" value={editingSlipData.amount} onChange={(e) => setEditingSlipData({...editingSlipData, amount: parseFloat(e.target.value) || 0})} className={styles.tableInput} /></td>
+                          <td><select value={editingSlipData.paymentTool} onChange={(e) => setEditingSlipData({...editingSlipData, paymentTool: e.target.value})} className={styles.tableSelect}>{paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></td>
+                          <td><input type="text" value={editingSlipData.memo} onChange={(e) => setEditingSlipData({...editingSlipData, memo: e.target.value})} className={styles.tableInput} /></td>
+                          <td><input type="text" value={editingSlipData.name} onChange={(e) => setEditingSlipData({...editingSlipData, name: e.target.value})} className={styles.tableInput} /></td>
+                          <td>
+                            <label className={styles.toggleSwitch}>
+                              <input
+                                type="checkbox"
+                                checked={editingSlipData.type === '物販'}
+                                onChange={() => setEditingSlipData(prev => ({ ...prev, type: prev.type === '一般' ? '物販' : '一般' }))}
+                              />
+                              <span className={styles.slider}></span>
+                            </label>
+                            <span className={styles.toggleLabel}>{editingSlipData.type}</span>
+                          </td>
+                          <td className={styles.actionsCell}>
+                            <button type="button" onClick={handleUpdateSlip} className={`${styles.tableButton} ${styles.saveButton}`}>保存</button>
+                            <button type="button" onClick={handleCancelEdit} className={`${styles.tableButton} ${styles.cancelButton}`}>キャンセル</button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>{slip.slipNumber}</td><td>{slip.amount.toLocaleString()}円</td><td>{slip.paymentTool}</td><td>{slip.memo}</td><td>{slip.name}</td><td>{slip.type}</td>
+                          <td className={styles.actionsCell}>
+                            <button type="button" onClick={() => handleEditClick(slip)} className={styles.tableButton}>編集</button>
+                            <button type="button" onClick={() => handleDeleteSlip(slip.id)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan="1"><strong>合計</strong></td>
+                    <td><strong>{manualSlips.filter(slip => slip.type === '物販').reduce((sum, slip) => sum + slip.amount, 0).toLocaleString()}円</strong></td>
+                    <td colSpan="5"></td>
+                  </tr>
+                </tfoot>
+              </table>
+          </div>
+        </>
+      )}
+
+      {isClient && (
+        <>
+          <div className={styles.sectionHeader}>
+            <h2 id="cash-calculator" className={styles.sectionTitle}>現金計算ツール</h2>
+            <div className={styles.registerAmountContainer}>
+              <label htmlFor="registerAmountInput">レジ金設定:</label>
+              <input
+                id="registerAmountInput"
+                type="number"
+                value={registerAmount}
+                onChange={handleRegisterAmountChange}
+                className={styles.formInputSingleRow}
+                min="0"
+              />円
+            </div>
+          </div>
+          <div className={styles.tableContainer}>
+            <table className={`${styles.table} ${styles.cashCalculatorTable}`}>
+              <thead>
+                <tr>
+                  <th>金種</th>
+                  <th>枚数</th>
+                  <th>金額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(cashCounts)
+                  .sort(([a], [b]) => parseInt(b) - parseInt(a)) // Sort by denomination descending
+                  .map(([denomination, count]) => (
+                  <tr key={denomination}>
+                    <td>{denomination}円</td>
+                    <td>
+                      <input
+                        type="number"
+                        value={count === 0 ? '' : count}
+                        onChange={(e) => handleCashCountChange(denomination, e.target.value)}
+                        className={styles.formInputSingleRow}
+                        min="0"
+                      />
+                    </td>
+                    <td className={styles.amountCell}>{(parseInt(denomination) * count).toLocaleString()}円</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>合計</strong></td>
+                  <td></td>
+                  <td className={styles.amountCell}><strong>{finalCashTotal.toLocaleString()}円</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+
+      {isClient && paymentTableDisplayData.length > 0 && (
+        <>
+          <h2 id="actual-sales-calculator" className={styles.sectionTitle}>実売上計算ツール</h2>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>分類</th>
+                  <th>データの金額</th>
+                  <th>実売上額</th>
+                  <th>結果</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentTableDisplayData.map((item, index) => {
+                  const key = item.大分類 + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                  const calculatedAmount = item.合計売上金額 || 0;
+                  const inputAmount = parseFloat(actualSalesInput[key]) || 0;
+                  const difference = inputAmount - calculatedAmount;
+                  const isMatch = difference === 0;
+                  const isParentCategory = item.isTotalRow;
+                  const isMiddleCategory = item.中分類 && !item.小分類;
+                  const isDisabledRow = item.isTotalRow; // Define isDisabledRow here
+
+                  return (
+                    <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
+                      <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
+                      <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
+                      <td>
+                        {isParentCategory && !isMiddleCategory ? (
+                          <span>{parentCategoryActualSums[item.大分類] ? parentCategoryActualSums[item.大分類].toLocaleString() + '円' : '-'}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={actualSalesInput[key] || ''}
+                            onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
+                            className={styles.formInputSingleRow}
+                            disabled={isDisabledRow || key === 'Cash'} // Disable input for total rows or for 'Cash'
+                          />
+                        )}
+                      </td>
+                      <td>
+                        {inputAmount !== 0 && (
+                          isMatch ? (
+                            <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
+                          ) : (
+                            <span style={{ color: 'red', fontWeight: 'bold' }}>
+                              {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
+                            </span>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>合計</strong></td>
+                  <td className={styles.amountCell}><strong>{overallTotal.toLocaleString()}円</strong></td>
+                  <td className={styles.amountCell}><strong>{Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0).toLocaleString()}円</strong></td>
+                  <td>
+                    {(() => {
+                      const totalInput = Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+                      const totalDifference = totalInput - overallTotal;
+                      if (totalDifference === 0) {
+                        return <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>;
+                      } else {
+                        return (
+                          <span style={{ color: 'red', fontWeight: 'bold' }}>
+                            {totalDifference > 0 ? `+${totalDifference.toLocaleString()}円` : `${totalDifference.toLocaleString()}円`} ({totalDifference > 0 ? '多い' : '少ない'})
+                          </span>
+                        );
+                      }
+                    })()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </>
       )}
@@ -1155,147 +1350,6 @@ export default function Home() {
         </>
       )}
 
-      {isClient && paymentTableDisplayData.length > 0 && (
-        <>
-          <h2 id="actual-sales-calculator" className={styles.sectionTitle}>実売上計算ツール</h2>
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>分類</th>
-                  <th>データの金額</th>
-                  <th>実売上額</th>
-                  <th>結果</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentTableDisplayData.map((item, index) => {
-                  const key = item.大分類 + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
-                  const calculatedAmount = item.合計売上金額 || 0;
-                  const inputAmount = parseFloat(actualSalesInput[key]) || 0;
-                  const difference = inputAmount - calculatedAmount;
-                  const isMatch = difference === 0;
-                  const isParentCategory = item.isTotalRow;
-                  const isMiddleCategory = item.中分類 && !item.小分類;
-                  const isDisabledRow = item.isTotalRow; // Define isDisabledRow here
-
-                  return (
-                    <tr key={index} className={item.isSubTotalRow ? styles.middleCategoryRow : (item.小分類 && item.小分類 !== '' ? styles.subCategoryRow : '')}>
-                      <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
-                      <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
-                      <td>
-                        {isParentCategory && !isMiddleCategory ? (
-                          <span>{parentCategoryActualSums[item.大分類] ? parentCategoryActualSums[item.大分類].toLocaleString() + '円' : '-'}</span>
-                        ) : (
-                          <input
-                            type="number"
-                            value={actualSalesInput[key] || ''}
-                            onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
-                            className={styles.formInputSingleRow}
-                            disabled={isDisabledRow || key === 'Cash'} // Disable input for total rows or for 'Cash'
-                          />
-                        )}
-                      </td>
-                      <td>
-                        {inputAmount !== 0 && (
-                          isMatch ? (
-                            <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>
-                          ) : (
-                            <span style={{ color: 'red', fontWeight: 'bold' }}>
-                              {difference > 0 ? `+${difference.toLocaleString()}円` : `${difference.toLocaleString()}円`} ({difference > 0 ? '多い' : '少ない'})
-                            </span>
-                          )
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td><strong>合計</strong></td>
-                  <td className={styles.amountCell}><strong>{overallTotal.toLocaleString()}円</strong></td>
-                  <td className={styles.amountCell}><strong>{Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0).toLocaleString()}円</strong></td>
-                  <td>
-                    {(() => {
-                      const totalInput = Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-                      const totalDifference = totalInput - overallTotal;
-                      if (totalDifference === 0) {
-                        return <span style={{ color: 'green', fontWeight: 'bold' }}>一致</span>;
-                      } else {
-                        return (
-                          <span style={{ color: 'red', fontWeight: 'bold' }}>
-                            {totalDifference > 0 ? `+${totalDifference.toLocaleString()}円` : `${totalDifference.toLocaleString()}円`} ({totalDifference > 0 ? '多い' : '少ない'})
-                          </span>
-                        );
-                      }
-                    })()}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </>
-      )}
-
-      {isClient && (
-        <>
-          <div className={styles.sectionHeader}>
-            <h2 id="cash-calculator" className={styles.sectionTitle}>現金計算ツール</h2>
-            <div className={styles.registerAmountContainer}>
-              <label htmlFor="registerAmountInput">レジ金設定:</label>
-              <input
-                id="registerAmountInput"
-                type="number"
-                value={registerAmount}
-                onChange={handleRegisterAmountChange}
-                className={styles.formInputSingleRow}
-                min="0"
-              />円
-            </div>
-          </div>
-          <div className={styles.tableContainer}>
-            <table className={`${styles.table} ${styles.cashCalculatorTable}`}>
-              <thead>
-                <tr>
-                  <th>金種</th>
-                  <th>枚数</th>
-                  <th>金額</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(cashCounts)
-                  .sort(([a], [b]) => parseInt(b) - parseInt(a)) // Sort by denomination descending
-                  .map(([denomination, count]) => (
-                  <tr key={denomination}>
-                    <td>{denomination}円</td>
-                    <td>
-                      <input
-                        type="number"
-                        value={count === 0 ? '' : count}
-                        onChange={(e) => handleCashCountChange(denomination, e.target.value)}
-                        className={styles.formInputSingleRow}
-                        min="0"
-                      />
-                    </td>
-                    <td className={styles.amountCell}>{(parseInt(denomination) * count).toLocaleString()}円</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td><strong>合計</strong></td>
-                  <td></td>
-                  <td className={styles.amountCell}><strong>{finalCashTotal.toLocaleString()}円</strong>
-                    <button onClick={handleCopyCashTotal} className={`${styles.tableButton} ${styles.smallButton} ${styles.cashCopyButton}`}>コピー</button>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </>
-      )}
-
       {isClient && marketingMetrics && (
         <>
           <h2 id="marketing-metrics" className={styles.sectionTitle}>マーケティング指標</h2>
@@ -1303,21 +1357,45 @@ export default function Home() {
             <table className={styles.table}>
               <thead><tr><th>指標</th><th>値</th></tr></thead>
               <tbody>
-                <tr><td><strong>総売上</strong></td><td>{marketingMetrics.totalRevenue.toLocaleString()}円</td></tr>
-                <tr><td><strong>総取引件数</strong></td><td>{marketingMetrics.totalTransactions.toLocaleString()}件</td></tr>
-                <tr><td><strong>ユニーク顧客数</strong></td><td>{marketingMetrics.uniqueCustomers.toLocaleString()}人</td></tr>
-                <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
-                <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer).toLocaleString()}円</td></tr>
-                {Object.entries(marketingMetrics.paymentToolBreakdown).map(([tool, data]) => [
-                    <tr key={`${tool}-header`}><td colSpan="2"><strong>決済ツール別: {tool}</strong></td></tr>,
-                    <tr key={`${tool}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{data.sales.toLocaleString()}円</td></tr>,
-                    <tr key={`${tool}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{data.count.toLocaleString()}件</td></tr>
-                ])}
+                <tr><td><strong>総売上</strong></td><td>{marketingMetrics.totalRevenue}円</td></tr>
+                <tr><td><strong>総取引件数</strong></td><td>{marketingMetrics.totalTransactions}件</td></tr>
+                <tr><td><strong>ユニーク顧客数</strong></td><td>{marketingMetrics.uniqueCustomers}人</td></tr>
+                <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction)}円</td></tr>
+                <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer)}円</td></tr>
+                <tr><td><strong>平均年齢</strong></td><td>{marketingMetrics.averageAge > 0 ? marketingMetrics.averageAge.toFixed(1) + '歳' : 'N/A'}</td></tr>
+                <tr><td><strong>12歳以下の顧客</strong></td><td>{`${marketingMetrics.customers12AndUnder}人 (${marketingMetrics.percentage12AndUnder.toFixed(1)}%)`}</td></tr>
+                
+                {Object.entries(marketingMetrics.paymentToolBreakdown).map(([tool, data]) => {
+                  const salesPercentage = marketingMetrics.totalRevenue > 0 ? (data.sales / marketingMetrics.totalRevenue * 100).toFixed(1) : 0;
+                  const countPercentage = marketingMetrics.uniqueCustomers > 0 ? (data.count / marketingMetrics.uniqueCustomers * 100).toFixed(1) : 0;
+                  return [
+                    <tr key={`${tool}-header`}><td colSpan="2"><strong>決済ツール別: ${tool}</strong></td></tr>,
+                    <tr key={`${tool}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{`${data.sales}円 (${salesPercentage}%)`}</td></tr>,
+                    <tr key={`${tool}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{`${data.count}人 (${countPercentage}%)`}</td></tr>
+                  ];
+                })}
+
                 {Object.entries(marketingMetrics.windowBreakdown).map(([window, count]) => {
-                  const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
+                  const percentage = marketingMetrics.uniqueCustomers > 0 ? (count / marketingMetrics.uniqueCustomers * 100).toFixed(1) : 0;
                   return (
-                    <tr key={`${window}-count`}><td><strong>窓口別: {window}</strong></td><td>{count.toLocaleString()}件 ({percentage}%)</td></tr>
+                    <tr key={`${window}-count`}><td><strong>窓口別: ${window}</strong></td><td>{`${count}人 (${percentage}%)`}</td></tr>
                   );
+                })}
+
+                <tr><td colSpan="2"><strong>国籍別</strong></td></tr>
+                {Object.entries(marketingMetrics.nationalityBreakdown).map(([nationality, count]) => {
+                    const percentage = marketingMetrics.uniqueCustomers > 0 ? (count / marketingMetrics.uniqueCustomers * 100).toFixed(1) : 0;
+                    return (
+                        <tr key={nationality}><td style={{ paddingLeft: '2em' }}>{nationality}</td><td>{`${count}人 (${percentage}%)`}</td></tr>
+                    );
+                })}
+
+                <tr><td colSpan="2"><strong>時間別決済</strong></td></tr>
+                {Object.entries(marketingMetrics.hourlyBreakdown).map(([hour, count]) => {
+                    const percentage = marketingMetrics.uniqueCustomers > 0 ? (count / marketingMetrics.uniqueCustomers * 100).toFixed(1) : 0;
+                    return (
+                        <tr key={hour}><td style={{ paddingLeft: '2em' }}>{hour}</td><td>{`${count}人 (${percentage}%)`}</td></tr>
+                    );
                 })}
               </tbody>
             </table>
@@ -1329,11 +1407,11 @@ export default function Home() {
         <div className={styles.globalMenu}>
           <a href="#payment-summary">決済</a>
           <a href="#manual-slips">伝票入力</a>
+          <a href="#cash-calculator">現金計算</a>
+          <a href="#actual-sales-calculator">実売上計算</a>
           <a href="#unknown-transactions">不明取引</a>
           <a href="#transactions-list">取引一覧</a>
-          <a href="#actual-sales-calculator">実売上計算</a>
-          <a href="#cash-calculator">現金計算</a>
-          <a href="#marketing-metrics">指標</a>
+          <a href="#marketing-metrics">マーケ指標</a>
           <button onClick={() => setShowCompletionPopup(true)} className={styles.completeButton}>完了</button>
         </div>
       )}
