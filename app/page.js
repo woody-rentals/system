@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import styles from "./page.module.scss";
 import { paymentToolOptions } from '../data/paymentTools.js'; // Assuming this is the correct path to your payment tools data
+
 export default function Home() {
   // State variables
   const [csvData, setCsvData] = useState([]);
@@ -28,6 +29,7 @@ export default function Home() {
   const [totalCashAmount, setTotalCashAmount] = useState(0);
   const [registerAmount, setRegisterAmount] = useState(50500); // レジ金の初期値
   const [finalCashTotal, setFinalCashTotal] = useState(0); // 最終的な現金合計
+  const [showCompletionPopup, setShowCompletionPopup] = useState(false);
 
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '' });
@@ -101,7 +103,8 @@ export default function Home() {
           item.amount === searchAmount ||
           (item.枝番 === '1' && applicationNumberTotals[item.申込番号] === searchAmount)
         );
-      }n    }
+      }
+    }
 
     if (applicationNumberSearchTerm) {
       filtered = filtered.filter(item => 
@@ -525,10 +528,6 @@ export default function Home() {
     }
   };
 
-  
-
-  
-
   const handleSaveManualSlipsToCsv = () => {
     if (manualSlips.length === 0) {
       alert('保存する伝票がありません。');
@@ -927,7 +926,7 @@ export default function Home() {
       
       {isClient && (hasProcessed || manualSlips.length > 0) && paymentTableDisplayData.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>決済</h2>
+          <h2 id="payment-summary" className={styles.sectionTitle}>決済</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead><tr><th>大分類</th><th>中分類</th><th>小分類</th><th>合計売上金額</th></tr></thead>
@@ -946,7 +945,7 @@ export default function Home() {
       )}
 
       <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>伝票入力</h2>
+        <h2 id="manual-slips" className={styles.sectionTitle}>伝票入力</h2>
         <div className={styles.headerButtons}>
           {isClient && manualSlips.length > 0 && (
             <button onClick={handleSaveManualSlipsToCsv} className={`${styles.fileInputLabel} ${styles.smallButton} ${styles.saveButton}`}>一時保存 (CSVをDL)</button>
@@ -1013,7 +1012,7 @@ export default function Home() {
 
       {isClient && unknownPaymentToolData.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>決済ツール不明の取引</h2>
+          <h2 id="unknown-transactions" className={styles.sectionTitle}>決済ツール不明の取引</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
@@ -1044,7 +1043,7 @@ export default function Home() {
       {isClient && knownTransactionsData.length > 0 && (
         <>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>取引一覧</h2>
+            <h2 id="transactions-list" className={styles.sectionTitle}>取引一覧</h2>
             <div className={styles.headerButtons}>
               {isClient && knownTransactionsData.length > 0 && (
                 <div className={styles.transactionButtonsContainer}>
@@ -1158,7 +1157,7 @@ export default function Home() {
 
       {isClient && paymentTableDisplayData.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>実売上計算ツール</h2>
+          <h2 id="actual-sales-calculator" className={styles.sectionTitle}>実売上計算ツール</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
@@ -1242,7 +1241,7 @@ export default function Home() {
       {isClient && (
         <>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>現金計算ツール</h2>
+            <h2 id="cash-calculator" className={styles.sectionTitle}>現金計算ツール</h2>
             <div className={styles.registerAmountContainer}>
               <label htmlFor="registerAmountInput">レジ金設定:</label>
               <input
@@ -1299,7 +1298,7 @@ export default function Home() {
 
       {isClient && marketingMetrics && (
         <>
-          <h2 className={styles.sectionTitle}>マーケティング指標</h2>
+          <h2 id="marketing-metrics" className={styles.sectionTitle}>マーケティング指標</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead><tr><th>指標</th><th>値</th></tr></thead>
@@ -1326,23 +1325,38 @@ export default function Home() {
         </>
       )}
 
-      {/* Clipboard Copy Section */}
-      {isClient && (hasProcessed || manualSlips.length > 0) && (
-        <div className={styles.copySectionContainer}>
-          <h2 className={styles.sectionTitle}>スプレッドシート用にコピー</h2>
-          <div className={styles.copyButtonsContainer}>
-            <button onClick={handleCopyAllDataToClipboard} className={`${styles.clipboardButton} ${styles.copyAllButton}`}>
-              全てをコピー
-            </button>
-            <button onClick={handleCopyPaymentSummary} className={styles.clipboardButton}>
-              決済サマリーをコピー
-            </button>
-            <button onClick={handleCopyToClipboard} className={styles.clipboardButton}>
-              取引一覧をコピー
-            </button>
-            <button onClick={handleCopyMarketingMetrics} className={styles.clipboardButton}>
-              マーケティング指標をコピー
-            </button>
+      {isClient && (
+        <div className={styles.globalMenu}>
+          <a href="#payment-summary">決済</a>
+          <a href="#manual-slips">伝票入力</a>
+          <a href="#unknown-transactions">不明取引</a>
+          <a href="#transactions-list">取引一覧</a>
+          <a href="#actual-sales-calculator">実売上計算</a>
+          <a href="#cash-calculator">現金計算</a>
+          <a href="#marketing-metrics">指標</a>
+          <button onClick={() => setShowCompletionPopup(true)} className={styles.completeButton}>完了</button>
+        </div>
+      )}
+
+      {showCompletionPopup && (
+        <div className={styles.popupOverlay}>
+          <div className={styles.popupContent}>
+            <h2 className={styles.sectionTitle}>スプレッドシート用にコピー</h2>
+            <div className={styles.copyButtonsContainer}>
+              <button onClick={handleCopyAllDataToClipboard} className={`${styles.clipboardButton} ${styles.copyAllButton}`}>
+                全てをコピー
+              </button>
+              <button onClick={handleCopyPaymentSummary} className={styles.clipboardButton}>
+                決済サマリーをコピー
+              </button>
+              <button onClick={handleCopyToClipboard} className={styles.clipboardButton}>
+                取引一覧をコピー
+              </button>
+              <button onClick={handleCopyMarketingMetrics} className={styles.clipboardButton}>
+                マーケティング指標をコピー
+              </button>
+            </div>
+            <button onClick={() => setShowCompletionPopup(false)} className={styles.closeButton}>閉じる</button>
           </div>
         </div>
       )}

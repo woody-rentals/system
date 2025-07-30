@@ -437,3 +437,104 @@ $black: #000000;
     text-align: right;
   }
 }
+
+.globalMenu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 70px;
+  background-color: #333;
+  color: white;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  z-index: 1000;
+
+  a, .completeButton {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #555;
+    }
+  }
+
+  .completeButton {
+    background-color: #4CAF50; // Green
+    border: none;
+    cursor: pointer;
+  }
+}
+
+.popupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+}
+
+.popupContent {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .copyButtonsContainer {
+    display: flex;
+    flex-direction: column; // Arrange buttons vertically
+    gap: 1rem; // Add space between buttons
+    margin-bottom: 1.5rem;
+  }
+
+  .clipboardButton {
+    padding: 0.8rem 1.5rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%; // Make buttons take full width of the popup content
+    text-align: center;
+
+    &:hover {
+      background-color: #e0e0e0;
+    }
+
+    &.copyAllButton {
+      background-color: #007bff; // A different color for the 'copy all' button
+      color: white;
+
+      &:hover {
+        background-color: #0056b3;
+      }
+    }
+  }
+
+  .closeButton {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 5px;
+    background-color: #ccc;
+    cursor: pointer;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #bbb;
+    }
+  }
+}
