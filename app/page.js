@@ -84,6 +84,14 @@ export default function Home() {
   }, [totalCashAmount, registerAmount]);
 
   useEffect(() => {
+    // Automatically update the actual sales input for Cash when finalCashTotal changes
+    setActualSalesInput(prev => ({
+      ...prev,
+      'Cash': finalCashTotal
+    }));
+  }, [finalCashTotal]);
+
+  useEffect(() => {
     let filtered = knownTransactionsData;
 
     if (amountSearchTerm) {
@@ -402,9 +410,9 @@ export default function Home() {
     rows.push(['平均取引単価', Math.round(marketingMetrics.avgSpendPerTransaction)]);
     rows.push(['顧客平均単価', Math.round(marketingMetrics.avgSpendPerCustomer)]);
 
-    Object.entries(marketingMetrics.paymentMethodBreakdown).forEach(([method, data]) => {
-      rows.push([`決済方法別: ${method} - 売上`, data.sales]);
-      rows.push([`決済方法別: ${method} - 件数`, data.count]);
+    Object.entries(marketingMetrics.paymentToolBreakdown).forEach(([tool, data]) => {
+      rows.push([`決済ツール別: ${tool} - 売上`, data.sales]);
+      rows.push([`決済ツール別: ${tool} - 件数`, data.count]);
     });
 
     const tsvString = [headerString, ...rows.map(row => row.join('\t'))].join('\n');
@@ -476,9 +484,9 @@ export default function Home() {
     rows.push(['ユニーク顧客数', marketingMetrics.uniqueCustomers]);
     rows.push(['平均取引単価', Math.round(marketingMetrics.avgSpendPerTransaction)]);
     rows.push(['顧客平均単価', Math.round(marketingMetrics.avgSpendPerCustomer)]);
-    Object.entries(marketingMetrics.paymentMethodBreakdown).forEach(([method, data]) => {
-      rows.push([`決済方法別: ${method} - 売上`, data.sales]);
-      rows.push([`決済方法別: ${method} - 件数`, data.count]);
+    Object.entries(marketingMetrics.paymentToolBreakdown).forEach(([tool, data]) => {
+      rows.push([`決済ツール別: ${tool} - 売上`, data.sales]);
+      rows.push([`決済ツール別: ${tool} - 件数`, data.count]);
     });
     Object.entries(marketingMetrics.windowBreakdown).forEach(([window, count]) => {
       const percentage = marketingMetrics.uniqueCustomers > 0 ? ((count / marketingMetrics.uniqueCustomers) * 100).toFixed(2) : 0;
@@ -767,6 +775,11 @@ export default function Home() {
       }
     }
 
+    // Ensure 'Cash' is always present for the actual sales calculator
+    if (otherSales['Cash'] === undefined) {
+      otherSales['Cash'] = 0;
+    }
+
     const rakutenGrandTotal = Object.values(rakutenGroupTotals).reduce((sum, total) => sum + total, 0);
     const otherGrandTotal = Object.values(otherSales).reduce((sum, total) => sum + total, 0);
     const calculatedOverallTotal = rakutenGrandTotal + otherGrandTotal + finalUnknownTotal;
@@ -795,7 +808,7 @@ export default function Home() {
     setPaymentTableDisplayData(newPaymentTableData);
 
     // Marketing metrics calculation
-    const combinedDataForMetrics = allTransactions.filter(t => t.source === 'csv' || t.source === 'manual'); // Ensure only valid transactions are used
+    const combinedDataForMetrics = knownTransactions; // Ensure only valid transactions are used
     const transactionIds = new Set(combinedDataForMetrics.map(row => row['申込番号']).filter(id => id));
     const customerNames = new Set(combinedDataForMetrics.map(row => row['お名前']).filter(name => name));
     const totalTransactions = transactionIds.size;
@@ -1180,7 +1193,7 @@ export default function Home() {
                             value={actualSalesInput[key] || ''}
                             onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
                             className={styles.formInputSingleRow}
-                            disabled={isDisabledRow} // Disable input only for total rows
+                            disabled={isDisabledRow || key === 'Cash'} // Disable input for total rows or for 'Cash'
                           />
                         )}
                       </td>
@@ -1253,6 +1266,7 @@ export default function Home() {
               </thead>
               <tbody>
                 {Object.entries(cashCounts)
+                  .sort(([a], [b]) => parseInt(b) - parseInt(a)) // Sort by denomination descending
                   .map(([denomination, count]) => (
                   <tr key={denomination}>
                     <td>{denomination}円</td>
