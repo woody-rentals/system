@@ -741,13 +741,13 @@ export default function Home() {
     const appGroup = ['R Pay', 'AU Pay'];
     const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO'];
     const creditCardGroup = ['Credit Card'];
-    const rakutenGroupTotals = { 'アプリ決済': 0, 'タッチ決済': 0, 'クレジットカード': 0 };
+    const rakutenGroupTotals = { 'アプリ決済': 0, 'タッチ決済': 0, 'カード決済': 0 };
     const otherSales = {};
 
     for (const [tool, total] of Object.entries(salesByTool)) {
       if (appGroup.includes(tool)) rakutenGroupTotals['アプリ決済'] += total;
       else if (touchGroup.includes(tool)) rakutenGroupTotals['タッチ決済'] += total;
-      else if (creditCardGroup.includes(tool)) rakutenGroupTotals['クレジットカード'] += total;
+      else if (creditCardGroup.includes(tool)) rakutenGroupTotals['カード決済'] += total;
       else {
         if (!otherSales[tool]) otherSales[tool] = 0;
         otherSales[tool] += total;
@@ -771,7 +771,7 @@ export default function Home() {
       const toolsInGroup = Object.entries(salesByTool).filter(([toolName]) => {
         if (groupName === 'アプリ決済') return appGroup.includes(toolName);
         if (groupName === 'タッチ決済') return touchGroup.includes(toolName);
-        if (groupName === 'クレジットカード') return creditCardGroup.includes(toolName);
+        if (groupName === 'カード決済') return creditCardGroup.includes(toolName);
         return false;
       });
       toolsInGroup.forEach(([toolName, toolTotal]) => newPaymentTableData.push({ 大分類: '', 中分類: '', 小分類: toolName, 合計売上金額: toolTotal }));
