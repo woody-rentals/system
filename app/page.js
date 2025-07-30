@@ -71,15 +71,17 @@ export default function Home() {
 
   useEffect(() => {
     const newParentSums = {};
+    let currentMainCategory = '';
     paymentTableDisplayData.forEach(item => {
-      if (item.isTotalRow) {
-        const middleCategories = paymentTableDisplayData.filter(i => i.大分類 === item.大分類 && i.isSubTotalRow);
-        let sum = 0;
-        middleCategories.forEach(mc => {
-          const key = mc.大分類 + (mc.中分類 ? `-${mc.中分類}` : '');
-          sum += parseFloat(actualSalesInput[key]) || 0;
-        });
-        newParentSums[item.大分類] = sum;
+      if (item.大分類 && item.isTotalRow) {
+        currentMainCategory = item.大分類;
+      }
+      if (currentMainCategory && item.isSubTotalRow) {
+        const key = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '');
+        if (!newParentSums[currentMainCategory]) {
+          newParentSums[currentMainCategory] = 0;
+        }
+        newParentSums[currentMainCategory] += parseFloat(actualSalesInput[key]) || 0;
       }
     });
     setParentCategoryActualSums(newParentSums);
