@@ -63,13 +63,69 @@ export default function Home() {
   useEffect(() => {
     // Calculate parent category actual sums whenever actualSalesInput or paymentTableDisplayData changes
     const newParentSums = {};
+    const newMiddleCategorySums = {};
+
+    // First, calculate sums for middle categories based on sub-categories
     paymentTableDisplayData.forEach(item => {
-      if (item.中分類 && item.中分類 !== '' && actualSalesInput[item.大分類 + ' - ' + item.中分類]) {
-        const parentKey = item.大分類;
-        newParentSums[parentKey] = (newParentSums[parentKey] || 0) + (parseFloat(actualSalesInput[item.大分類 + ' - ' + item.中分類]) || 0);
+      if (item.小分類 && item.小分類 !== '') { // If it's a sub-category
+        const key = item.大分類 + (item.中分類 ? ` - ${item.中分類}` : '') + (item.小分類 ? ` - ${item.小分類}` : '');
+        const inputAmount = parseFloat(actualSalesInput[key]) || 0;
+        if (item.中分類) { // If it has a middle category
+          const middleCategoryKey = item.大分類 + ' - ' + item.中分類;
+          newMiddleCategorySums[middleCategoryKey] = (newMiddleCategorySums[middleCategoryKey] || 0) + inputAmount;
+        }
       }
     });
+
+    // Then, calculate sums for main categories based on middle categories or direct entries
+    paymentTableDisplayData.forEach(item => {
+      if (item.大分類 && !item.小分類) { // If it's a main category or middle category
+        const key = item.大分類 + (item.中分類 ? ` - ${item.中分類}` : '');
+        let sumForParent = 0;
+
+        if (item.中分類) { // If it's a middle category
+          sumForParent = newMiddleCategorySums[key] || (parseFloat(actualSalesInput[key]) || 0); // Use calculated sum or direct input
+        } else { // If it's a main category (not a middle category)
+          // Sum up all middle categories under this main category
+          sumForParent = Object.entries(newMiddleCategorySums)
+            .filter(([middleKey]) => middleKey.startsWith(item.大分類 + ' - '))
+            .reduce((sum, [, value]) => sum + value, 0);
+          
+          // Add direct entries for main categories that don't have middle categories (e.g., Cash, 不明)
+          if (!item.中分類 && !item.小分類) {
+            const directKey = item.大分類;
+            sumForParent += (parseFloat(actualSalesInput[directKey]) || 0);
+          }
+        }
+        newParentSums[item.大分類] = (newParentSums[item.大分類] || 0) + sumForParent;
+      }
+    });
+
     setParentCategoryActualSums(newParentSums);
+
+    // Update actualSalesInput for middle categories based on calculated sums
+    setActualSalesInput(prev => {
+      const updated = { ...prev };
+      for (const key in newMiddleCategorySums) {
+        updated[key] = newMiddleCategorySums[key];
+      }
+      // Update actualSalesInput for main categories based on calculated sums
+      for (const key in newParentSums) {
+        // Only update if it's a main category that is not a middle category (e.g., Cash, 不明)
+        // Or if it's a main category that is a total row (like '楽天')
+        const item = paymentTableDisplayData.find(d => d.大分類 === key && !d.中分類 && !d.小分類);
+        if (item && item.isTotalRow) { // For '楽天' total row
+          updated[key] = newParentSums[key];
+        } else if (item && !item.中分類 && !item.小分類) { // For direct main categories like 'Cash', '不明'
+          // Do not overwrite if it's a direct input like Cash, which is handled by finalCashTotal
+          if (key !== 'Cash') {
+            updated[key] = newParentSums[key];
+          }
+        }
+      }
+      return updated;
+    });
+
   }, [actualSalesInput, paymentTableDisplayData]);
 
   useEffect(() => {
@@ -430,8 +486,6 @@ export default function Home() {
 
   const getPaymentSummaryTsv = () => {
     if (paymentTableDisplayData.length === 0) return '';
-    const headers = ['分類', '合計売上金額'];
-    const headerString = headers.join('\t');
     const mainCategoryRows = paymentTableDisplayData.filter(item => 
       item.大分類 && !item.中分類 && !item.小分類
     );
@@ -444,7 +498,7 @@ export default function Home() {
     });
     const totalRow = ['合計', overallTotal].join('\t');
     rows.push(totalRow);
-    return [headerString, ...rows].join('\n');
+    return rows.join('\n');
   };
 
   const getAllTransactionsTsv = () => {
@@ -499,17 +553,51 @@ export default function Home() {
     return [headerString, ...rows.map(row => row.join('\t'))].join('\n');
   };
 
+  const getMerchandiseSlipsTsv = () => {
+    const merchandiseSlips = manualSlips.filter(slip => slip.type === '物販');
+    if (merchandiseSlips.length === 0) {
+      return '物販なし';
+    }
+
+    const headers = [
+      'slipNumber', 'name', 'amount', 'paymentTool', 'memo', 'type'
+    ];
+    const headerString = headers.join('\t');
+
+    const rows = merchandiseSlips.map(slip => {
+      const rowData = [
+        slip.slipNumber || '',
+        slip.name || '',
+        slip.amount || 0,
+        slip.paymentTool || '',
+        slip.memo || '',
+        slip.type || '一般'
+      ];
+      return rowData.map(cell => {
+          const cellString = String(cell);
+          return cellString.replace(/\t/g, ' ').replace(/\n/g, ' ');
+      }).join('\t');
+    });
+
+    return [headerString, ...rows].join('\n');
+  };
+
   const handleCopyAllDataToClipboard = () => {
     let combinedTsv = '';
 
     const paymentSummaryTsv = getPaymentSummaryTsv();
     if (paymentSummaryTsv) {
-      combinedTsv += '--- 決済サマリー ---\n' + paymentSummaryTsv + '\n\n';
+      combinedTsv += '--- 決済サマリー ---\n';
+      combinedTsv += '分類\t合計売上金額\n'; // Add header manually
+      combinedTsv += paymentSummaryTsv + '\n\n';
     }
+
+    const merchandiseSlipsTsv = getMerchandiseSlipsTsv();
+    combinedTsv += '--- 伝票一覧 (物販) ---\n' + merchandiseSlipsTsv + '\n\n';
 
     const allTransactionsTsv = getAllTransactionsTsv();
     if (allTransactionsTsv) {
-      combinedTsv += '--- 全取引一覧 ---\n' + allTransactionsTsv + '\n\n';
+      combinedTsv += '--- 全取引一覧(物販含む) ---\n' + allTransactionsTsv + '\n\n';
     }
 
     const marketingMetricsTsv = getMarketingMetricsTsv();
@@ -804,12 +892,21 @@ export default function Home() {
 
     const paymentToolBreakdown = combinedDataForMetrics.reduce((acc, row) => {
       const tool = row['tool'];
+      const customerName = row['お名前']; // Get customer name
       if (!tool) return acc;
-      if (!acc[tool]) acc[tool] = { sales: 0, count: 0 };
+      if (!acc[tool]) acc[tool] = { sales: 0, uniqueCustomers: new Set() }; // Use a Set to store unique customer names
       acc[tool].sales += row.amount;
-      acc[tool].count += 1; // This is transaction count, will be updated to unique customer count later if needed
+      if (customerName) {
+        acc[tool].uniqueCustomers.add(customerName); // Add customer name to the Set
+      }
       return acc;
     }, {});
+
+    // Convert Set sizes to actual unique customer counts
+    for (const tool in paymentToolBreakdown) {
+      paymentToolBreakdown[tool].count = paymentToolBreakdown[tool].uniqueCustomers.size;
+      delete paymentToolBreakdown[tool].uniqueCustomers; // Remove the Set
+    }
 
     const windowBreakdown = combinedDataForMetrics.reduce((acc, row) => {
       const window = row['窓口'];
@@ -893,11 +990,29 @@ export default function Home() {
     });
   };
 
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowCompletionPopup(false);
+      }
+    };
+
+    if (showCompletionPopup) {
+      document.addEventListener('keydown', handleEscape);
+    } else {
+      document.removeEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showCompletionPopup]);
+
   return (
     <div className={styles.container}>
       {showDuplicateModal && duplicateModalData && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
+        <div className={styles.modalOverlay} onClick={() => setShowDuplicateModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h2>重複項目が見つかりました</h2>
             <p>重複する{duplicateModalData.duplicates.length}件の{duplicateModalData.type === 'manualSlips' ? '伝票' : '取引'}が見つかりました。どうしますか？</p>
             <div className={styles.modalButtons}>
@@ -1151,16 +1266,16 @@ export default function Home() {
                       <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
                       <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
                       <td>
-                        {isParentCategory && !isMiddleCategory ? (
-                          <span>{parentCategoryActualSums[item.大分類] ? parentCategoryActualSums[item.大分類].toLocaleString() + '円' : '-'}</span>
-                        ) : (
+                        {item.小分類 ? (
                           <input
                             type="number"
                             value={actualSalesInput[key] || ''}
                             onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
                             className={styles.formInputSingleRow}
-                            disabled={isDisabledRow || key === 'Cash'} // Disable input for total rows or for 'Cash'
+                            disabled={key === 'Cash'} // Disable input for 'Cash'
                           />
+                        ) : (
+                          <span>{actualSalesInput[key] ? actualSalesInput[key].toLocaleString() + '円' : '-'}</span>
                         )}
                       </td>
                       <td>
@@ -1369,8 +1484,8 @@ export default function Home() {
                   const salesPercentage = marketingMetrics.totalRevenue > 0 ? (data.sales / marketingMetrics.totalRevenue * 100).toFixed(1) : 0;
                   const countPercentage = marketingMetrics.uniqueCustomers > 0 ? (data.count / marketingMetrics.uniqueCustomers * 100).toFixed(1) : 0;
                   return [
-                    <tr key={`${tool}-header`}><td colSpan="2"><strong>決済ツール別: ${tool}</strong></td></tr>,
-                    <tr key={`${tool}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{`${data.sales}円 (${salesPercentage}%)`}</td></tr>,
+                    <tr key={`${tool}-header`}><td colSpan="2"><strong>決済ツール別: {tool}</strong></td></tr>,
+                    <tr key={`${tool}-sales`}><td style={{ paddingLeft: '2em' }}>売上</td><td>{`${data.sales.toLocaleString()}円 (${salesPercentage}%)`}</td></tr>,
                     <tr key={`${tool}-count`}><td style={{ paddingLeft: '2em' }}>件数</td><td>{`${data.count}人 (${countPercentage}%)`}</td></tr>
                   ];
                 })}
@@ -1417,8 +1532,8 @@ export default function Home() {
       )}
 
       {showCompletionPopup && (
-        <div className={styles.popupOverlay}>
-          <div className={styles.popupContent}>
+        <div className={styles.popupOverlay} onClick={() => setShowCompletionPopup(false)}>
+          <div className={styles.popupContent} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.sectionTitle}>スプレッドシート用にコピー</h2>
             <div className={styles.copyButtonsContainer}>
               <button onClick={handleCopyAllDataToClipboard} className={`${styles.clipboardButton} ${styles.copyAllButton}`}>
@@ -1426,6 +1541,9 @@ export default function Home() {
               </button>
               <button onClick={handleCopyPaymentSummary} className={styles.clipboardButton}>
                 決済サマリーをコピー
+              </button>
+              <button onClick={() => navigator.clipboard.writeText(getMerchandiseSlipsTsv()).then(() => alert('伝票一覧 (物販) がクリップボードにコピーされました。')).catch(err => console.error('伝票一覧 (物販) のコピーに失敗しました:', err))} className={styles.clipboardButton}>
+                伝票一覧 (物販) をコピー
               </button>
               <button onClick={handleCopyToClipboard} className={styles.clipboardButton}>
                 取引一覧をコピー
