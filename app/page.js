@@ -1477,11 +1477,11 @@ export default function Home() {
             <table className={styles.table}>
               <thead><tr><th>指標</th><th>値</th></tr></thead>
               <tbody>
-                <tr><td><strong>総売上</strong></td><td>{marketingMetrics.totalRevenue}円</td></tr>
+                <tr><td><strong>総売上</strong></td><td>{marketingMetrics.totalRevenue.toLocaleString()}円</td></tr>
                 <tr><td><strong>総取引件数</strong></td><td>{marketingMetrics.totalTransactions}件</td></tr>
                 <tr><td><strong>ユニーク顧客数</strong></td><td>{marketingMetrics.uniqueCustomers}人</td></tr>
-                <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction)}円</td></tr>
-                <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer)}円</td></tr>
+                <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
+                <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer).toLocaleString()}円</td></tr>
                 <tr><td><strong>平均年齢</strong></td><td>{marketingMetrics.averageAge > 0 ? marketingMetrics.averageAge.toFixed(1) + '歳' : 'N/A'}</td></tr>
                 <tr><td><strong>12歳以下の顧客</strong></td><td>{`${marketingMetrics.customers12AndUnder}人 (${marketingMetrics.percentage12AndUnder.toFixed(1)}%)`}</td></tr>
                 
