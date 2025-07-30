@@ -205,7 +205,7 @@ export default function Home() {
         setCsvData(results.data.map((row, index) => ({ ...row, originalIndex: index })));
         setUploadedFileName(file.name); // Set the uploaded file name
         // Initialize unknownPaymentToolData with all potentially unknown items from CSV
-        const initialUnknownData = results.data.map((row, index) => ({ ...row, originalIndex: index })).filter(row => {
+        const initialUnknownData = results.data.map((row, index) => ({ ...row, originalIndex: index, status: row['ステータス'] || '' })).filter(row => {
           const tool = row['決済ツール名'];
           const method = row['決済方法'];
           return (!tool || tool.trim() === '' || tool.trim().toLowerCase() === '不明') && (method.trim().toLowerCase() === '現地決済' || method.trim().toLowerCase() === '現地払い');
@@ -386,7 +386,7 @@ export default function Home() {
     }
 
     const headers = [
-      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'プロモコード', '窓口', '変動価格'
+      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'ステータス', 'プロモコード', '窓口', '変動価格'
     ];
     const headerString = headers.join('\t');
 
@@ -403,6 +403,7 @@ export default function Home() {
         item.決済時間 || '',
         item.貸出日時 || '',
         item.method || '',
+        item.status || '',
         item['プロモコード'] || '',
         item['窓口'] || '',
         item.変動価格 || ''
@@ -504,7 +505,7 @@ export default function Home() {
   const getAllTransactionsTsv = () => {
     if (knownTransactionsData.length === 0) return '';
     const headers = [
-      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'プロモコード', '窓口', '変動価格'
+      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'ステータス', 'プロモコード', '窓口', '変動価格'
     ];
     const headerString = headers.join('\t');
     const rows = knownTransactionsData.map(item => {
@@ -520,6 +521,7 @@ export default function Home() {
         item.決済時間 || '',
         item.貸出日時 || '',
         item.method || '',
+        item.status || '',
         item['プロモコード'] || '',
         item['窓口'] || '',
         item.変動価格 || ''
@@ -659,7 +661,7 @@ export default function Home() {
     }
 
     const headers = [
-      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'プロモコード', '窓口', '変動価格'
+      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'ステータス', 'プロモコード', '窓口', '変動価格'
     ];
 
     const dataToSave = knownTransactionsData.map(item => ({
@@ -816,6 +818,7 @@ export default function Home() {
           tool: finalTool,
           method: finalMethod,
           isUnknownPaymentTool: (finalTool === '不明'),
+          status: transaction['ステータス'] || '', // Add status property
         });
       }
     });
@@ -1325,7 +1328,7 @@ export default function Home() {
           <h2 id="unknown-transactions" className={styles.sectionTitle}>決済ツール不明の取引</h2>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
-              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+              <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>ステータス</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
               <tbody>
                 {unknownPaymentToolData.map((item, index) => {
                   console.log('Unknown item:', item);
@@ -1340,7 +1343,7 @@ export default function Home() {
                         {paymentToolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                       </select>
                     </td>
-                    <td className={styles.dateCell}>{item.貸出日}</td><td className={styles.shopCell}>{item.貸出店舗}</td><td className={styles.memoCell} style={{minWidth: '15rem'}}>{item.メモ}</td><td>{item.決済時間}</td><td>{item.貸出日時}</td><td>{item.決済方法}</td><td>{item.プロモコード}</td><td>{item.窓口}</td><td>{item.変動価格}</td>
+                    <td className={styles.dateCell}>{item.貸出日}</td><td className={styles.shopCell}>{item.貸出店舗}</td><td className={styles.memoCell} style={{minWidth: '15rem'}}>{item.メモ}</td><td>{item.決済時間}</td><td>{item.貸出日時}</td>                    <td>{item.決済方法}</td><td>{item.status}</td><td>{item.プロモコード}</td><td>{item.窓口}</td><td>{item.変動価格}</td>
                     <td className={styles.actionsCell}><button type="button" onClick={() => handleDeleteUnknownItem(item.originalIndex)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button></td>
                   </tr>
                 );})}
@@ -1386,7 +1389,7 @@ export default function Home() {
           </div>
           <div className={styles.tableContainer}>
             <table className={styles.table}>
-                            <thead><tr><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+                            <thead><tr><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>ステータス</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
               <tbody>
               {console.log('knownTransactionsData before rendering:', knownTransactionsData)}
                 {filteredTransactions.length > 0 ? (
@@ -1421,6 +1424,7 @@ export default function Home() {
                           <td>{item.決済時間}</td>
                           <td>{item.貸出日時}</td>
                           <td>{item.method}</td>
+                          <td>{item.status}</td>
                           <td>{item['プロモコード']}</td>
                           <td>{item['窓口']}</td>
                           <td>{item.変動価格}</td>
@@ -1443,6 +1447,7 @@ export default function Home() {
                           <td>{item.決済時間}</td>
                           <td>{item.貸出日時}</td>
                           <td>{item.method}</td>
+                          <td>{item.status}</td>
                           <td>{item['プロモコード']}</td>
                           <td>{item['窓口']}</td>
                           <td>{item.変動価格}</td>
