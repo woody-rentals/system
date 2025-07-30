@@ -875,6 +875,8 @@ export default function Home() {
     // --- Marketing Metrics Calculation ---
     const combinedDataForMetrics = knownTransactions;
     const totalTransactions = combinedDataForMetrics.length;
+    const uniqueApplicationNumbers = new Set(combinedDataForMetrics.map(t => t.申込番号).filter(Boolean));
+    const totalGroups = uniqueApplicationNumbers.size;
 
     const uniqueCustomerData = Array.from(
       combinedDataForMetrics.reduce((map, row) => {
@@ -890,7 +892,7 @@ export default function Home() {
     );
 
     const uniqueCustomers = uniqueCustomerData.length;
-    const avgSpendPerTransaction = totalTransactions > 0 ? calculatedOverallTotal / totalTransactions : 0;
+    const avgSpendPerGroup = totalGroups > 0 ? calculatedOverallTotal / totalGroups : 0;
     const avgSpendPerCustomer = uniqueCustomers > 0 ? calculatedOverallTotal / uniqueCustomers : 0;
 
     const paymentToolBreakdown = combinedDataForMetrics.reduce((acc, row) => {
@@ -954,9 +956,9 @@ export default function Home() {
 
     setMarketingMetrics({
       totalRevenue: calculatedOverallTotal,
-      totalTransactions,
+      totalTransactions: totalGroups, // Changed from totalTransactions
       uniqueCustomers,
-      avgSpendPerTransaction,
+      avgSpendPerTransaction: avgSpendPerGroup, // Changed from avgSpendPerTransaction
       avgSpendPerCustomer,
       paymentToolBreakdown, // Note: count is still transaction count here
       windowBreakdown: windowFinalBreakdown,
@@ -1478,9 +1480,9 @@ export default function Home() {
               <thead><tr><th>指標</th><th>値</th></tr></thead>
               <tbody>
                 <tr><td><strong>総売上</strong></td><td>{marketingMetrics.totalRevenue.toLocaleString()}円</td></tr>
-                <tr><td><strong>総取引件数</strong></td><td>{marketingMetrics.totalTransactions}件</td></tr>
+                <tr><td><strong>グループ件数</strong></td><td>{marketingMetrics.totalTransactions}件</td></tr>
                 <tr><td><strong>ユニーク顧客数</strong></td><td>{marketingMetrics.uniqueCustomers}人</td></tr>
-                <tr><td><strong>平均取引単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
+                <tr><td><strong>グループ平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerTransaction).toLocaleString()}円</td></tr>
                 <tr><td><strong>顧客平均単価</strong></td><td>{Math.round(marketingMetrics.avgSpendPerCustomer).toLocaleString()}円</td></tr>
                 <tr><td><strong>平均年齢</strong></td><td>{marketingMetrics.averageAge > 0 ? marketingMetrics.averageAge.toFixed(1) + '歳' : 'N/A'}</td></tr>
                 <tr><td><strong>12歳以下の顧客</strong></td><td>{`${marketingMetrics.customers12AndUnder}人 (${marketingMetrics.percentage12AndUnder.toFixed(1)}%)`}</td></tr>
