@@ -69,6 +69,22 @@ export default function Home() {
     }
   }, [csvData, manualSlips, unknownPaymentToolData]);
 
+  useEffect(() => {
+    const newParentSums = {};
+    paymentTableDisplayData.forEach(item => {
+      if (item.isTotalRow) {
+        const middleCategories = paymentTableDisplayData.filter(i => i.大分類 === item.大分類 && i.isSubTotalRow);
+        let sum = 0;
+        middleCategories.forEach(mc => {
+          const key = mc.大分類 + (mc.中分類 ? `-${mc.中分類}` : '');
+          sum += parseFloat(actualSalesInput[key]) || 0;
+        });
+        newParentSums[item.大分類] = sum;
+      }
+    });
+    setParentCategoryActualSums(newParentSums);
+  }, [actualSalesInput, paymentTableDisplayData]);
+
   
 
   useEffect(() => {
@@ -1024,6 +1040,7 @@ export default function Home() {
           actualSalesInput={actualSalesInput} 
           setActualSalesInput={setActualSalesInput} 
           overallTotal={overallTotal} 
+          parentCategoryActualSums={parentCategoryActualSums}
         />
       )}
 

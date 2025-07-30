@@ -5,7 +5,8 @@ export default function ActualSalesCalculator({
   paymentTableDisplayData, 
   actualSalesInput, 
   setActualSalesInput, 
-  overallTotal 
+  overallTotal, 
+  parentCategoryActualSums 
 }) {
   if (paymentTableDisplayData.length === 0) return null;
 
@@ -16,11 +17,12 @@ export default function ActualSalesCalculator({
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>分類</th>
-              <th>データの金額</th>
-              <th>実売上額</th>
-              <th>結果</th>
-            </tr>
+                  <th>分類</th>
+                  <th>データの金額</th>
+                  <th>実売上額</th>
+                  <th>項目合計</th>
+                  <th>結果</th>
+                </tr>
           </thead>
           <tbody>
             {paymentTableDisplayData.map((item, index) => {
@@ -35,13 +37,18 @@ export default function ActualSalesCalculator({
                   <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
                   <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
                   <td>
-                    <input
+                    {item.isTotalRow ? null : (
+                      <input
                         type="number"
                         value={actualSalesInput[key] || ''}
                         onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
                         className={styles.formInputSingleRow}
-                        disabled={key === 'Cash'} // Disable input for 'Cash'
+                        disabled={key === 'Cash'}
                       />
+                    )}
+                  </td>
+                  <td>
+                    {item.isTotalRow ? `${(parentCategoryActualSums[item.大分類] || 0).toLocaleString()}円` : ''}
                   </td>
                   <td>
                     {inputAmount !== 0 && (
@@ -63,6 +70,7 @@ export default function ActualSalesCalculator({
               <td><strong>合計</strong></td>
               <td className={styles.amountCell}><strong>{overallTotal.toLocaleString()}円</strong></td>
               <td className={styles.amountCell}><strong>{Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0).toLocaleString()}円</strong></td>
+              <td></td>
               <td>
                 {(() => {
                   const totalInput = Object.values(actualSalesInput).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
