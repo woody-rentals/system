@@ -69,73 +69,7 @@ export default function Home() {
     }
   }, [csvData, manualSlips, unknownPaymentToolData]);
 
-  useEffect(() => {
-    // Calculate parent category actual sums whenever actualSalesInput or paymentTableDisplayData changes
-    const newParentSums = {};
-    const newMiddleCategorySums = {};
-
-    // First, calculate sums for middle categories based on sub-categories
-    paymentTableDisplayData.forEach(item => {
-      if (item.小分類 && item.小分類 !== '') { // If it's a sub-category
-        const key = item.大分類 + (item.中分類 ? ` - ${item.中分類}` : '') + (item.小分類 ? ` - ${item.小分類}` : '');
-        const inputAmount = parseFloat(actualSalesInput[key]) || 0;
-        if (item.中分類) { // If it has a middle category
-          const middleCategoryKey = item.大分類 + ' - ' + item.中分類;
-          newMiddleCategorySums[middleCategoryKey] = (newMiddleCategorySums[middleCategoryKey] || 0) + inputAmount;
-        }
-      }
-    });
-
-    // Then, calculate sums for main categories based on middle categories or direct entries
-    paymentTableDisplayData.forEach(item => {
-      if (item.大分類 && !item.小分類) { // If it's a main category or middle category
-        const key = item.大分類 + (item.中分類 ? ` - ${item.中分類}` : '');
-        let sumForParent = 0;
-
-        if (item.中分類) { // If it's a middle category
-          sumForParent = newMiddleCategorySums[key] || (parseFloat(actualSalesInput[key]) || 0); // Use calculated sum or direct input
-        } else { // If it's a main category (not a middle category)
-          // Sum up all middle categories under this main category
-          sumForParent = Object.entries(newMiddleCategorySums)
-            .filter(([middleKey]) => middleKey.startsWith(item.大分類 + ' - '))
-            .reduce((sum, [, value]) => sum + value, 0);
-          
-          // Add direct entries for main categories that don't have middle categories (e.g., Cash, 不明)
-          if (!item.中分類 && !item.小分類) {
-            const directKey = item.大分類;
-            sumForParent += (parseFloat(actualSalesInput[directKey]) || 0);
-          }
-        }
-        newParentSums[item.大分類] = (newParentSums[item.大分類] || 0) + sumForParent;
-      }
-    });
-
-    setParentCategoryActualSums(newParentSums);
-
-    // Update actualSalesInput for middle categories based on calculated sums
-    setActualSalesInput(prev => {
-      const updated = { ...prev };
-      for (const key in newMiddleCategorySums) {
-        updated[key] = newMiddleCategorySums[key];
-      }
-      // Update actualSalesInput for main categories based on calculated sums
-      for (const key in newParentSums) {
-        // Only update if it's a main category that is not a middle category (e.g., Cash, 不明)
-        // Or if it's a main category that is a total row (like '楽天')
-        const item = paymentTableDisplayData.find(d => d.大分類 === key && !d.中分類 && !d.小分類);
-        if (item && item.isTotalRow) { // For '楽天' total row
-          updated[key] = newParentSums[key];
-        } else if (item && !item.中分類 && !item.小分類) { // For direct main categories like 'Cash', '不明'
-          // Do not overwrite if it's a direct input like Cash, which is handled by finalCashTotal
-          if (key !== 'Cash') {
-            updated[key] = newParentSums[key];
-          }
-        }
-      }
-      return updated;
-    });
-
-  }, [actualSalesInput, paymentTableDisplayData]);
+  
 
   useEffect(() => {
     // Calculate total cash amount whenever cashCounts changes

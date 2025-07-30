@@ -35,17 +35,13 @@ export default function ActualSalesCalculator({
                   <td>{item.大分類}{item.中分類 ? ` - ${item.中分類}` : ''}{item.小分類 ? ` - ${item.小分類}` : ''}</td>
                   <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
                   <td>
-                    {item.小分類 ? (
-                      <input
+                    <input
                         type="number"
                         value={actualSalesInput[key] || ''}
                         onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
                         className={styles.formInputSingleRow}
                         disabled={key === 'Cash'} // Disable input for 'Cash'
                       />
-                    ) : (
-                      <span>{actualSalesInput[key] ? actualSalesInput[key].toLocaleString() + '円' : '-'}</span>
-                    )}
                   </td>
                   <td>
                     {inputAmount !== 0 && (
