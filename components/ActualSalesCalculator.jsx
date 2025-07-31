@@ -51,7 +51,12 @@ export default function ActualSalesCalculator({
                   return null;
                 }
 
-                const key = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                let key;
+                if (item.大分類 && !item.中分類 && !item.小分類) {
+                  key = item.大分類; // For top-level items like 'Cash' or other direct payment tools
+                } else {
+                  key = currentMainCategory + (item.中分類 ? `-${item.中分類}` : '') + (item.小分類 ? `-${item.小分類}` : '');
+                }
                 const calculatedAmount = item.合計売上金額 || 0;
                 const inputAmount = parseFloat(actualSalesInput[key]) || 0;
                 const itemTotalAmount = item.isTotalRow ? (parentCategoryActualSums[item.大分類] || 0) : inputAmount;
@@ -64,17 +69,23 @@ export default function ActualSalesCalculator({
                     <td className={styles.amountCell}>{calculatedAmount.toLocaleString()}円</td>
                     <td>
                       {item.isTotalRow ? null : (
-                        <input
-                          type="number"
-                          value={actualSalesInput[key] || ''}
-                          onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
-                          className={styles.formInputSingleRow}
-                          disabled={key === 'Cash'}
-                        />
+                        key === 'Cash' ? (
+                          <span>{actualSalesInput[key] ? actualSalesInput[key].toLocaleString() + '円' : '-'}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={actualSalesInput[key] || ''}
+                            onChange={(e) => setActualSalesInput({ ...actualSalesInput, [key]: e.target.value })}
+                            className={styles.formInputSingleRow}
+                            disabled={key === 'Cash'}
+                          />
+                        )
                       )}
                     </td>
                     <td>
-                      {item.isTotalRow ? `${(parentCategoryActualSums[item.大分類] || 0).toLocaleString()}円` : ''}
+                      {item.isTotalRow ? `${(parentCategoryActualSums[item.大分類] || 0).toLocaleString()}円` : (
+                        key === 'Cash' ? '' : ''
+                      )}
                     </td>
                     <td>
                       {itemTotalAmount !== 0 && (
