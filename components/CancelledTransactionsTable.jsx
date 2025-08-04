@@ -2,29 +2,31 @@
 import styles from '../app/page.module.scss';
 import { paymentToolOptions } from '../data/paymentTools.js';
 
-export default function TransactionTable({ 
-  knownTransactionsData, 
-  filteredTransactions, 
-  editingTransactionId, 
-  editingTransactionData, 
+export default function CancelledTransactionsTable({ 
+  cancelledTransactionsData, 
   applicationNumberTotals, 
   handleTransactionEditClick, 
   handleTransactionUpdate, 
   handleTransactionCancelEdit, 
   handleTransactionDelete, 
-  setEditingTransactionData 
+  editingTransactionId, 
+  editingTransactionData,
+  setEditingTransactionData
 }) {
-  if (knownTransactionsData.length === 0) return null;
+  if (cancelledTransactionsData.length === 0) return null;
 
   return (
     <>
+      <div className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle}>ステータス:キャンセル</h2>
+      </div>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead><tr><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th>決済ツール</th><th>貸出日</th><th>貸出店舗</th><th>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>ステータス</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
           <tbody>
-            {filteredTransactions.length > 0 ? (
-              filteredTransactions.map((item, index) => (
-                <tr key={item.id || index} className={`${item.isUnknownPaymentTool ? styles.unknownPaymentRow : ''} ${item.status === 'キャンセル' ? styles.cancelledRow : ''}`}>
+            {cancelledTransactionsData.length > 0 ? (
+              cancelledTransactionsData.map((item, index) => (
+                <tr key={item.id || index} className={styles.cancelledRow}>
                   {editingTransactionId === item.id ? (
                     <>
                       <td>{item.申込番号}</td>
@@ -91,7 +93,7 @@ export default function TransactionTable({
               ))
             ) : (
               <tr>
-                <td colSpan="17" style={{ textAlign: 'center' }}>データなし</td>
+                <td colSpan="17" style={{ textAlign: 'center' }}>キャンセルされた取引はありません</td>
               </tr>
             )}
           </tbody>

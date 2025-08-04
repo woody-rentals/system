@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import styles from "./page.module.scss";
-import { paymentToolOptions } from '../data/paymentTools.js';
+// import { paymentToolOptions } from '../data/paymentTools.js';
 import MarketingMetricsTable from '../components/MarketingMetricsTable.jsx';
 import TransactionTable from '../components/TransactionTable.jsx';
+import CancelledTransactionsTable from '../components/CancelledTransactionsTable.jsx';
 import ManualSlipTable from '../components/ManualSlipTable.jsx';
 import PaymentSummaryTable from '../components/PaymentSummaryTable.jsx';
 import CashCalculator from '../components/CashCalculator.jsx';
@@ -20,6 +21,7 @@ export default function Home() {
   const [paymentTableDisplayData, setPaymentTableDisplayData] = useState([]);
   const [unknownPaymentToolData, setUnknownPaymentToolData] = useState([]);
   const [knownTransactionsData, setKnownTransactionsData] = useState([]); // New state for known transactions
+  const [cancelledTransactionsData, setCancelledTransactionsData] = useState([]); // New state for cancelled transactions
   const [marketingMetrics, setMarketingMetrics] = useState(null);
   const [overallTotal, setOverallTotal] = useState(0);
   const [applicationNumberTotals, setApplicationNumberTotals] = useState({}); // New state for application number totals
@@ -391,22 +393,20 @@ export default function Home() {
       alert('コピーするデータがありません。');
       return;
     }
-    const headers = ['分類', '合計売上金額'];
+    const headers = ['大分類', '中分類', '小分類', '合計売上金額'];
     const headerString = headers.join('\t');
 
-    const mainCategoryRows = paymentTableDisplayData.filter(item => 
-      item.大分類 && !item.中分類 && !item.小分類
-    );
-
-    const rows = mainCategoryRows.map(item => {
+    const rows = paymentTableDisplayData.map(item => {
       const rowData = [
-        item.大分類, 
+        item.大分類 || '',
+        item.中分類 || '',
+        item.小分類 || '',
         item.合計売上金額 || 0
       ];
       return rowData.join('\t');
     });
 
-    const totalRow = ['合計', overallTotal].join('\t');
+    const totalRow = ['合計', '', '', overallTotal].join('\t');
     rows.push(totalRow);
 
     const tsvString = [headerString, ...rows].join('\n');
@@ -449,19 +449,20 @@ export default function Home() {
 
   const getPaymentSummaryTsv = () => {
     if (paymentTableDisplayData.length === 0) return '';
-    const mainCategoryRows = paymentTableDisplayData.filter(item => 
-      item.大分類 && !item.中分類 && !item.小分類
-    );
-    const rows = mainCategoryRows.map(item => {
+    const headers = ['大分類', '中分類', '小分類', '合計売上金額'];
+    const headerString = headers.join('\t');
+    const rows = paymentTableDisplayData.map(item => {
       const rowData = [
-        item.大分類, 
+        item.大分類 || '',
+        item.中分類 || '',
+        item.小分類 || '',
         item.合計売上金額 || 0
       ];
       return rowData.join('\t');
     });
-    const totalRow = ['合計', overallTotal].join('\t');
+    const totalRow = ['合計', '', '', overallTotal].join('\t');
     rows.push(totalRow);
-    return rows.join('\n');
+    return [headerString, ...rows].join('\n');
   };
 
   const getAllTransactionsTsv = () => {
@@ -549,12 +550,10 @@ export default function Home() {
   const handleCopyAllDataToClipboard = () => {
     let combinedTsv = '';
 
-    const paymentSummaryTsv = getPaymentSummaryTsv();
-    if (paymentSummaryTsv) {
-      combinedTsv += '--- 決済サマリー ---\n';
-      combinedTsv += '分類\t合計売上金額\n'; // Add header manually
-      combinedTsv += paymentSummaryTsv + '\n\n';
-    }
+    const paymentSummaryTsv = getPaymentSummaryTsv();    if (paymentSummaryTsv) {      combinedTsv += '--- 決済サマリー ---
+';      combinedTsv += paymentSummaryTsv + '
+
+';    }
 
     const merchandiseSlipsTsv = getMerchandiseSlipsTsv();
     combinedTsv += '--- 伝票一覧 (物販) ---\n' + merchandiseSlipsTsv + '\n\n';
@@ -786,6 +785,7 @@ export default function Home() {
     });
 
     setKnownTransactionsData(knownTransactions);
+    setCancelledTransactionsData(knownTransactions.filter(t => t.status === 'キャンセル'));
     setApplicationNumberTotals(tempApplicationNumberTotals);
 
     const finalUnknownTotal = salesByTool['不明'] || 0;
@@ -1058,6 +1058,20 @@ export default function Home() {
           handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
           handleDeleteUnknownItem={handleTransactionDelete} 
           setCheckedRows={setCheckedRows} 
+        />
+      )}
+
+      {isClient && (
+        <CancelledTransactionsTable
+          cancelledTransactionsData={cancelledTransactionsData}
+          applicationNumberTotals={applicationNumberTotals}
+          handleTransactionEditClick={handleTransactionEditClick}
+          handleTransactionUpdate={handleTransactionUpdate}
+          handleTransactionCancelEdit={handleTransactionCancelEdit}
+          handleTransactionDelete={handleTransactionDelete}
+          editingTransactionId={editingTransactionId}
+          editingTransactionData={editingTransactionData}
+          setEditingTransactionData={setEditingTransactionData}
         />
       )}
 
