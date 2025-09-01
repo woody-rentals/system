@@ -43,6 +43,12 @@ export default function Home() {
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [showSubCategories, setShowSubCategories] = useState(false);
 
+  // State for store selection
+  const [availableStores, setAvailableStores] = useState([]);
+  const [selectedStore, setSelectedStore] = useState('');
+  const [showStoreSelection, setShowStoreSelection] = useState(false);
+  const [allCsvData, setAllCsvData] = useState([]); // Store all CSV data before filtering
+
   // State for manual entry form
   const [formInput, setFormInput] = useState({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '', type: '一般' }); // Added type for slip
 
@@ -162,6 +168,10 @@ export default function Home() {
     setAmountSearchTerm('');
     setApplicationNumberSearchTerm('');
     setFilteredTransactions([]);
+    setAvailableStores([]);
+    setSelectedStore('');
+    setShowStoreSelection(false);
+    setAllCsvData([]);
   };
 
   const processFile = (file) => {
@@ -178,20 +188,72 @@ export default function Home() {
           setError('CSVに必須の列（金額, 決済方法, 決済ツール名）が含まれていません。');
           return;
         }
-        setCsvData(results.data.map((row, index) => ({ ...row, originalIndex: index })));
-        setUploadedFileName(file.name); // Set the uploaded file name
-        // Initialize unknownPaymentToolData with all potentially unknown items from CSV
-        const initialUnknownData = results.data.map((row, index) => ({ ...row, originalIndex: index, status: row['ステータス'] || '' })).filter(row => {
-          const tool = row['決済ツール名'];
-          const method = row['決済方法'];
-          return (!tool || tool.trim() === '' || tool.trim().toLowerCase() === '不明') && (method.trim().toLowerCase() === '現地決済' || method.trim().toLowerCase() === '現地払い');
-        }).map(item => ({ ...item, selectedPaymentTool: '', 申込番号合計金額: '' }));
-        setUnknownPaymentToolData(initialUnknownData);
-        console.log('Initial unknownPaymentToolData after parse:', initialUnknownData);
-        setHasProcessed(true);
+        
+        // Store all CSV data first
+        const dataWithIndex = results.data.map((row, index) => ({ ...row, originalIndex: index }));
+        setAllCsvData(dataWithIndex);
+        setUploadedFileName(file.name);
+        
+        // Extract unique stores from CSV data
+        const stores = [...new Set(dataWithIndex
+          .map(row => row['貸出店舗'])
+          .filter(store => store && store.trim() !== '')
+        )].sort();
+        
+        if (stores.length > 1) {
+          // Multiple stores found - show selection dialog
+          setAvailableStores(stores);
+          setShowStoreSelection(true);
+        } else if (stores.length === 1) {
+          // Only one store - auto-select and proceed
+          processDataForStore(dataWithIndex, stores[0]);
+        } else {
+          // No store data found - process all data
+          processDataForStore(dataWithIndex, null);
+        }
       },
       error: (err) => setError(`CSVの解析中にエラーが発生しました: ${err.message}`)
     });
+  };
+
+  /**
+   * 指定された店舗のデータのみを処理する
+   * @param {Array} allData - 全てのCSVデータ
+   * @param {string|null} storeName - 選択された店舗名（nullの場合は全データを処理）
+   */
+  const processDataForStore = (allData, storeName) => {
+    let filteredData;
+    
+    if (storeName) {
+      // 指定された店舗のデータのみをフィルタ
+      filteredData = allData.filter(row => row['貸出店舗'] === storeName);
+      setSelectedStore(storeName);
+    } else {
+      // 店舗情報がない場合は全データを使用
+      filteredData = allData;
+    }
+    
+    setCsvData(filteredData);
+    
+    // Initialize unknownPaymentToolData with filtered data
+    const initialUnknownData = filteredData.filter(row => {
+      const tool = row['決済ツール名'];
+      const method = row['決済方法'];
+      return (!tool || tool.trim() === '' || tool.trim().toLowerCase() === '不明') && 
+             (method.trim().toLowerCase() === '現地決済' || method.trim().toLowerCase() === '現地払い');
+    }).map(item => ({ ...item, selectedPaymentTool: '', 申込番号合計金額: '' }));
+    
+    setUnknownPaymentToolData(initialUnknownData);
+    setHasProcessed(true);
+    setShowStoreSelection(false);
+  };
+
+  /**
+   * 店舗選択ハンドラー
+   * @param {string} storeName - 選択された店舗名
+   */
+  const handleStoreSelection = (storeName) => {
+    processDataForStore(allCsvData, storeName);
   };
 
   const processManualSlipsFile = (file) => {
@@ -1107,6 +1169,13 @@ export default function Home() {
         error={error} 
       />
       
+      {/* 選択された店舗の表示 */}
+      {selectedStore && (
+        <div className={styles.selectedStoreInfo}>
+          <h3>選択された店舗: <span className={styles.storeName}>{selectedStore}</span></h3>
+        </div>
+      )}
+      
       {isClient && (hasProcessed || manualSlips.length > 0) && (
         <PaymentSummaryTable 
           paymentTableDisplayData={paymentTableDisplayData} 
@@ -1276,6 +1345,33 @@ export default function Home() {
               </button>
             </div>
             <button onClick={() => setShowCompletionPopup(false)} className={styles.closeButton}>閉じる</button>
+          </div>
+        </div>
+      )}
+
+      {/* 店舗選択モーダル */}
+      {showStoreSelection && (
+        <div className={styles.popupOverlay}>
+          <div className={styles.popupContent}>
+            <h2 className={styles.sectionTitle}>貸出店舗を選択してください</h2>
+            <p>複数の店舗が検出されました。処理する店舗を選択してください。</p>
+            <div className={styles.storeSelectionContainer}>
+              {availableStores.map((store, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleStoreSelection(store)}
+                  className={styles.storeSelectionButton}
+                >
+                  {store}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => handleStoreSelection(null)}
+              className={styles.allStoresButton}
+            >
+              全店舗のデータを処理
+            </button>
           </div>
         </div>
       )}
