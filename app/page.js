@@ -11,6 +11,7 @@ import PaymentSummaryTable from '../components/PaymentSummaryTable.jsx';
 import CashCalculator from '../components/CashCalculator.jsx';
 import ActualSalesCalculator from '../components/ActualSalesCalculator.jsx';
 import UnknownTransactionsTable from '../components/UnknownTransactionsTable.jsx';
+import AttentionStatusTransactionsTable from '../components/AttentionStatusTransactionsTable.jsx';
 import FileUpload from '../components/FileUpload.jsx';
 import ManualSlipForm from '../components/ManualSlipForm.jsx';
 
@@ -20,6 +21,7 @@ export default function Home() {
   const [manualSlips, setManualSlips] = useState([]);
   const [paymentTableDisplayData, setPaymentTableDisplayData] = useState([]);
   const [unknownPaymentToolData, setUnknownPaymentToolData] = useState([]);
+  const [attentionStatusData, setAttentionStatusData] = useState([]); // New state for attention status transactions
   const [knownTransactionsData, setKnownTransactionsData] = useState([]); // New state for known transactions
   const [cancelledTransactionsData, setCancelledTransactionsData] = useState([]); // New state for cancelled transactions
   const [marketingMetrics, setMarketingMetrics] = useState(null);
@@ -248,7 +250,20 @@ export default function Home() {
       status: item['ステータス'] || '' // ステータス情報を明示的に保持
     }));
     
+    // Initialize attention status data with filtered data
+    const standardStatuses = ['受渡中', '貸出中', '回収', '終了', 'Extended rental'];
+    const initialAttentionStatusData = filteredData.filter(row => {
+      const status = row['ステータス'];
+      return status && !standardStatuses.includes(status.trim());
+    }).map(item => ({ 
+      ...item, 
+      selectedPaymentTool: '', 
+      申込番号合計金額: '',
+      status: item['ステータス'] || '' // ステータス情報を明示的に保持
+    }));
+
     setUnknownPaymentToolData(initialUnknownData);
+    setAttentionStatusData(initialAttentionStatusData);
     setHasProcessed(true);
     setShowStoreSelection(false);
   };
@@ -1238,6 +1253,18 @@ export default function Home() {
           applicationNumberTotals={applicationNumberTotals} 
           handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
           handleDeleteUnknownItem={handleTransactionDelete} 
+          setCheckedRows={setCheckedRows} 
+        />
+      )}
+
+      {isClient && attentionStatusData.length > 0 && (
+        <AttentionStatusTransactionsTable 
+          attentionStatusData={attentionStatusData} 
+          checkedRows={checkedRows} 
+          applicationNumberTotals={applicationNumberTotals} 
+          handleDeleteUnknownItem={(index) => {
+            setAttentionStatusData(prevData => prevData.filter((_, i) => i !== index));
+          }} 
           setCheckedRows={setCheckedRows} 
         />
       )}
