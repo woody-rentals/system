@@ -539,8 +539,6 @@ export default function Home() {
 
   const getPaymentSummaryTsv = () => {
     if (paymentTableDisplayData.length === 0) return '';
-    const headers = ['大分類', '合計売上金額'];
-    const headerString = headers.join('\t');
     
     // 大分類ごとに合計を集計
     const categoryTotals = {};
@@ -561,7 +559,7 @@ export default function Home() {
     
     const totalRow = ['合計', overallTotal].join('\t');
     rows.push(totalRow);
-    return [headerString, ...rows].join('\n');
+    return rows.join('\n'); // ヘッダー行を削除してデータ行のみを返す
   };
 
   const getAllTransactionsTsv = () => {
@@ -621,7 +619,7 @@ export default function Home() {
     }
 
     const headers = [
-      'slipNumber', 'name', 'amount', 'paymentTool', 'memo', 'type'
+      '伝票番号', 'お名前', '金額', '決済ツール', 'メモ', 'タイプ'
     ];
     const headerString = headers.join('\t');
 
@@ -692,9 +690,7 @@ export default function Home() {
       }
     });
 
-    // TSV形式のデータを作成（大分類ごとの合計のみ）
-    const headers = ['大分類', '合計売上金額'];
-    const headerString = headers.join('\t');
+    // TSV形式のデータを作成（大分類ごとの合計のみ、ヘッダー行なし）
     const rows = [];
 
     // 楽天カテゴリがある場合
@@ -711,7 +707,7 @@ export default function Home() {
     // 合計行
     rows.push(['合計', totalAmount].join('\t'));
 
-    return [headerString, ...rows].join('\n');
+    return rows.join('\n'); // ヘッダー行を削除してデータ行のみを返す
   };
 
   const handleCopyAllDataToClipboard = () => {
@@ -723,12 +719,13 @@ export default function Home() {
       combinedTsv += paymentSummaryTsv + '\n\n';
     }
 
-    const merchandiseSlipsTsv = getMerchandiseSlipsTsv();
-    combinedTsv += '--- 伝票一覧 (物販) ---\n' + merchandiseSlipsTsv + '\n\n';
-
-    // 物販決済サマリーを追加
+    // 物販決済サマリーを先に追加
     const merchandisePaymentSummaryTsv = getMerchandisePaymentSummaryTsv();
     combinedTsv += '--- 物販決済サマリー ---\n' + merchandisePaymentSummaryTsv + '\n\n';
+
+    // 伝票一覧 (物販) を後に追加
+    const merchandiseSlipsTsv = getMerchandiseSlipsTsv();
+    combinedTsv += '--- 伝票一覧 (物販) ---\n' + merchandiseSlipsTsv + '\n\n';
 
     const allTransactionsTsv = getAllTransactionsTsv();
     if (allTransactionsTsv) {
