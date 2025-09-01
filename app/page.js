@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import styles from "./page.module.scss";
-// import { paymentToolOptions } from '../data/paymentTools.js';
+import { paymentToolOptions } from '../data/paymentTools.js';
 import MarketingMetricsTable from '../components/MarketingMetricsTable.jsx';
 import TransactionTable from '../components/TransactionTable.jsx';
 import CancelledTransactionsTable from '../components/CancelledTransactionsTable.jsx';
@@ -36,6 +36,17 @@ export default function Home() {
   const [editedUnknownRows, setEditedUnknownRows] = useState({}); // New state for tracking edited unknown rows
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateModalData, setDuplicateModalData] = useState(null);
+  const [showManualTransactionForm, setShowManualTransactionForm] = useState(false); // New state for manual transaction form
+  const [manualTransactionForm, setManualTransactionForm] = useState({ // New state for manual transaction form data
+    申込番号: '',
+    枝番: '1',
+    お名前: '',
+    金額: '',
+    決済ツール名: '',
+    プロモコード: '',
+    メモ: ''
+  });
+  const [manualTransactions, setManualTransactions] = useState([]); // New state for manual transactions
   const [actualSalesInput, setActualSalesInput] = useState({}); // New state for actual sales input
   const [parentCategoryActualSums, setParentCategoryActualSums] = useState({}); // New state for parent category actual sums
   const [cashCounts, setCashCounts] = useState({ '10000': 0, '5000': 0, '1000': 0, '500': 0, '100': 0, '50': 0, '10': 0, '5': 0, '1': 0 });
@@ -87,10 +98,10 @@ export default function Home() {
   const [filteredTransactions, setFilteredTransactions] = useState([]);
 
   useEffect(() => {
-    if (hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0) {
-      processAllData(csvData, manualSlips, unknownPaymentToolData);
+    if (hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0 || manualTransactions.length > 0) {
+      processAllData(csvData, manualSlips, unknownPaymentToolData, manualTransactions);
     }
-  }, [csvData, manualSlips, unknownPaymentToolData, hasProcessed]);
+  }, [csvData, manualSlips, unknownPaymentToolData, manualTransactions, hasProcessed]);
 
   useEffect(() => {
     const newParentSums = {};
@@ -427,6 +438,42 @@ export default function Home() {
 
     handleTransactionCancelEdit(); // Exit editing mode
     // The useEffect that watches csvData and manualSlips will automatically trigger processAllData
+  };
+
+  // Manual transaction handlers
+  const handleManualTransactionSubmit = (e) => {
+    e.preventDefault();
+    if (!manualTransactionForm.申込番号 || !manualTransactionForm.お名前 || !manualTransactionForm.金額) {
+      alert('申込番号、お名前、金額は必須項目です。');
+      return;
+    }
+    
+    const newTransaction = {
+      ...manualTransactionForm,
+      id: `manual-${Date.now()}`,
+      金額: parseFloat(manualTransactionForm.金額) || 0,
+      isManualTransaction: true,
+      originalIndex: `manual-${Date.now()}`
+    };
+    
+    setManualTransactions(prev => [...prev, newTransaction]);
+    setManualTransactionForm({
+      申込番号: '',
+      枝番: '1',
+      お名前: '',
+      金額: '',
+      決済ツール名: '',
+      プロモコード: '',
+      メモ: ''
+    });
+    setShowManualTransactionForm(false);
+  };
+
+  const handleManualTransactionFormChange = (field, value) => {
+    setManualTransactionForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleTransactionDelete = (transactionId, source) => {
@@ -907,7 +954,7 @@ export default function Home() {
     });
   };
 
-  const processAllData = (currentCsvData, currentManualSlips, currentUnknownPaymentToolData) => {
+  const processAllData = (currentCsvData, currentManualSlips, currentUnknownPaymentToolData, currentManualTransactions = []) => {
     const allTransactions = [
       ...currentCsvData.map((row, index) => ({
         ...row,
@@ -925,6 +972,13 @@ export default function Home() {
         '決済方法': '',
         '決済ツール名': slip.paymentTool,
         type: slip.type || '一般'
+      })),
+      ...currentManualTransactions.map(transaction => ({
+        ...transaction,
+        amount: parseFloat(transaction.金額),
+        source: 'manual-transaction',
+        '決済方法': transaction.決済ツール名 === '事前カード' ? 'カード払い' : '現地決済',
+        type: '一般'
       }))
     ].filter(t => !isNaN(t.amount));
 
@@ -961,6 +1015,8 @@ export default function Home() {
         }
       } else if (transaction.source === 'manual') {
         finalTool = transaction.paymentTool;
+      } else if (transaction.source === 'manual-transaction') {
+        finalTool = transaction.決済ツール名 || 'Cash';
       }
 
       if (finalTool) {
@@ -975,6 +1031,13 @@ export default function Home() {
           status: transaction['ステータス'] || '', // Add status property
         });
       }
+    });
+
+    // Sort transactions to put manual transactions first
+    knownTransactions.sort((a, b) => {
+      if (a.source === 'manual-transaction' && b.source !== 'manual-transaction') return -1;
+      if (a.source !== 'manual-transaction' && b.source === 'manual-transaction') return 1;
+      return 0;
     });
 
     setKnownTransactionsData(knownTransactions);
@@ -1288,6 +1351,12 @@ export default function Home() {
           <div className={styles.sectionHeader}>
             <h2 id="transactions-list" className={styles.sectionTitle}>取引一覧</h2>
             <div className={styles.headerButtons}>
+              <button 
+                onClick={() => setShowManualTransactionForm(true)}
+                className={`${styles.fileInputLabel} ${styles.smallButton}`}
+              >
+                取引を追加
+              </button>
               {isClient && knownTransactionsData.length > 0 && (
                 <div className={styles.transactionButtonsContainer}>
                   <button onClick={handleSaveTransactionsToCsv} className={`${styles.fileInputLabel} ${styles.smallButton} ${styles.saveButton}`}>取引一時保存 (CSVをDL)</button>
@@ -1407,6 +1476,84 @@ export default function Home() {
             >
               全店舗のデータを処理
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 手動取引追加モーダル */}
+      {showManualTransactionForm && (
+        <div className={styles.popupOverlay}>
+          <div className={styles.popupContent}>
+            <h2 className={styles.sectionTitle}>取引を追加</h2>
+            <form onSubmit={handleManualTransactionSubmit} className={styles.manualTransactionForm}>
+              <div className={styles.formRow}>
+                <label>申込番号 *</label>
+                <input
+                  type="text"
+                  value={manualTransactionForm.申込番号}
+                  onChange={(e) => handleManualTransactionFormChange('申込番号', e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label>枝番</label>
+                <input
+                  type="text"
+                  value={manualTransactionForm.枝番}
+                  onChange={(e) => handleManualTransactionFormChange('枝番', e.target.value)}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label>お名前 *</label>
+                <input
+                  type="text"
+                  value={manualTransactionForm.お名前}
+                  onChange={(e) => handleManualTransactionFormChange('お名前', e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label>金額 *</label>
+                <input
+                  type="number"
+                  value={manualTransactionForm.金額}
+                  onChange={(e) => handleManualTransactionFormChange('金額', e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label>決済ツール</label>
+                <select
+                  value={manualTransactionForm.決済ツール名}
+                  onChange={(e) => handleManualTransactionFormChange('決済ツール名', e.target.value)}
+                >
+                  <option value="">選択してください</option>
+                  {paymentToolOptions.map((option, index) => (
+                    <option key={index} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.formRow}>
+                <label>プロモコード</label>
+                <input
+                  type="text"
+                  value={manualTransactionForm.プロモコード}
+                  onChange={(e) => handleManualTransactionFormChange('プロモコード', e.target.value)}
+                />
+              </div>
+              <div className={styles.formRow}>
+                <label>メモ</label>
+                <textarea
+                  value={manualTransactionForm.メモ}
+                  onChange={(e) => handleManualTransactionFormChange('メモ', e.target.value)}
+                  rows="3"
+                />
+              </div>
+              <div className={styles.formButtons}>
+                <button type="submit" className={styles.submitButton}>追加</button>
+                <button type="button" onClick={() => setShowManualTransactionForm(false)} className={styles.cancelButton}>キャンセル</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

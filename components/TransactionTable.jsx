@@ -24,7 +24,7 @@ export default function TransactionTable({
           <tbody>
             {filteredTransactions.length > 0 ? (
               filteredTransactions.map((item, index) => (
-                <tr key={item.id || index} className={`${item.isUnknownPaymentTool ? styles.unknownPaymentRow : ''} ${item.status === 'キャンセル' ? styles.cancelledRow : ''}`}>
+                <tr key={item.id || index} className={`${item.isUnknownPaymentTool ? styles.unknownPaymentRow : ''} ${item.status === 'キャンセル' ? styles.cancelledRow : ''} ${item.source === 'manual-transaction' ? styles.manualTransactionRow : ''}`}>
                   {editingTransactionId === item.id ? (
                     <>
                       <td>{item.申込番号}</td>
