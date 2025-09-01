@@ -8,6 +8,11 @@ export default function AttentionStatusTransactionsTable({
   handleDeleteUnknownItem, 
   setCheckedRows 
 }) {
+  const handleDeleteWithConfirmation = (index) => {
+    if (window.confirm('この取引を削除してもよろしいですか？')) {
+      handleDeleteUnknownItem(index);
+    }
+  };
   if (attentionStatusData.length === 0) return null;
 
   return (
@@ -24,7 +29,7 @@ export default function AttentionStatusTransactionsTable({
                 <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
                 <td className={styles.paymentToolColumn}>{item['決済ツール名'] || ''}</td>
                 <td>{item.status || item['ステータス'] || ''}</td><td className={styles.dateCell}>{item.貸出日}</td><td className={styles.shopCell}>{item.貸出店舗}</td><td className={styles.memoCell} style={{minWidth: '15rem'}}>{item.メモ}</td><td>{item.決済時間}</td><td>{item.貸出日時}</td><td>{item.決済方法}</td><td>{item.プロモコード}</td><td>{item.窓口}</td><td>{item.変動価格}</td>
-                <td className={styles.actionsCell}><button type="button" onClick={() => handleDeleteUnknownItem(index)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button></td>
+                <td className={styles.actionsCell}><button type="button" onClick={() => handleDeleteWithConfirmation(index)} className={`${styles.tableButton} ${styles.deleteButton}`}>削除</button></td>
               </tr>
             ))}
           </tbody>
