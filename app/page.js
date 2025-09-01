@@ -241,7 +241,12 @@ export default function Home() {
       const method = row['決済方法'];
       return (!tool || tool.trim() === '' || tool.trim().toLowerCase() === '不明') && 
              (method.trim().toLowerCase() === '現地決済' || method.trim().toLowerCase() === '現地払い');
-    }).map(item => ({ ...item, selectedPaymentTool: '', 申込番号合計金額: '' }));
+    }).map(item => ({ 
+      ...item, 
+      selectedPaymentTool: '', 
+      申込番号合計金額: '',
+      status: item['ステータス'] || '' // ステータス情報を明示的に保持
+    }));
     
     setUnknownPaymentToolData(initialUnknownData);
     setHasProcessed(true);
