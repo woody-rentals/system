@@ -57,6 +57,18 @@ export default function Home() {
   // State to track if component is mounted on client
   const [isClient, setIsClient] = useState(false);
 
+  /**
+   * CSV/TSVセル内の改行文字を適切にエスケープするヘルパー関数
+   * @param {string} cellValue - セルの値
+   * @returns {string} エスケープされた値
+   */
+  const escapeCsvCell = (cellValue) => {
+    const cellString = String(cellValue);
+    // 改行文字（\n）とキャリッジリターン（\r）をスペースに置換
+    // タブ文字（\t）もスペースに置換してTSV形式を保護
+    return cellString.replace(/[\r\n]/g, ' ').replace(/\t/g, ' ');
+  };
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -70,7 +82,7 @@ export default function Home() {
     if (hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0) {
       processAllData(csvData, manualSlips, unknownPaymentToolData);
     }
-  }, [csvData, manualSlips, unknownPaymentToolData]);
+  }, [csvData, manualSlips, unknownPaymentToolData, hasProcessed]);
 
   useEffect(() => {
     const newParentSums = {};
@@ -372,10 +384,7 @@ export default function Home() {
         item['窓口'] || '',
         item.変動価格 || ''
       ];
-      return rowData.map(cell => {
-          const cellString = String(cell);
-          return cellString.replace(/\t/g, ' ').replace(/\n/g, ' ');
-      }).join('\t');
+      return rowData.map(cell => escapeCsvCell(cell)).join('\t');
     });
 
     const tsvString = [headerString, ...rows].join('\n');
@@ -447,20 +456,48 @@ export default function Home() {
     });
   };
 
+  /**
+   * 物販決済サマリーをクリップボードにコピー
+   */
+  const handleCopyMerchandisePaymentSummary = () => {
+    const merchandiseSlips = manualSlips.filter(slip => slip.type === '物販');
+    if (merchandiseSlips.length === 0) {
+      alert('物販伝票がありません。');
+      return;
+    }
+
+    const tsvString = getMerchandisePaymentSummaryTsv();
+    navigator.clipboard.writeText(tsvString).then(() => {
+      alert('物販決済サマリーがクリップボードにコピーされました。');
+    }).catch(err => {
+      console.error('物販決済サマリーのコピーに失敗しました:', err);
+      alert('物販決済サマリーのコピーに失敗しました。');
+    });
+  };
+
   const getPaymentSummaryTsv = () => {
     if (paymentTableDisplayData.length === 0) return '';
-    const headers = ['大分類', '中分類', '小分類', '合計売上金額'];
+    const headers = ['大分類', '合計売上金額'];
     const headerString = headers.join('\t');
-    const rows = paymentTableDisplayData.map(item => {
-      const rowData = [
-        item.大分類 || '',
-        item.中分類 || '',
-        item.小分類 || '',
-        item.合計売上金額 || 0
-      ];
-      return rowData.join('\t');
+    
+    // 大分類ごとに合計を集計
+    const categoryTotals = {};
+    paymentTableDisplayData.forEach(item => {
+      const mainCategory = item.大分類;
+      if (mainCategory && mainCategory.trim() !== '') {
+        // 大分類が存在する行のみを集計対象とする
+        if (!categoryTotals[mainCategory]) {
+          categoryTotals[mainCategory] = 0;
+        }
+        categoryTotals[mainCategory] += (item.合計売上金額 || 0);
+      }
     });
-    const totalRow = ['合計', '', '', overallTotal].join('\t');
+    
+    const rows = Object.entries(categoryTotals).map(([category, total]) => {
+      return [category, total].join('\t');
+    });
+    
+    const totalRow = ['合計', overallTotal].join('\t');
     rows.push(totalRow);
     return [headerString, ...rows].join('\n');
   };
@@ -489,10 +526,7 @@ export default function Home() {
         item['窓口'] || '',
         item.変動価格 || ''
       ];
-      return rowData.map(cell => {
-          const cellString = String(cell);
-          return cellString.replace(/\t/g, ' ').replace(/\n/g, ' ');
-      }).join('\t');
+      return rowData.map(cell => escapeCsvCell(cell)).join('\t');
     });
     return [headerString, ...rows].join('\n');
   };
@@ -538,11 +572,82 @@ export default function Home() {
         slip.memo || '',
         slip.type || '一般'
       ];
-      return rowData.map(cell => {
-          const cellString = String(cell);
-          return cellString.replace(/\t/g, ' ').replace(/\n/g, ' ');
-      }).join('\t');
+      return rowData.map(cell => escapeCsvCell(cell)).join('\t');
     });
+
+    return [headerString, ...rows].join('\n');
+  };
+
+  /**
+   * 物販伝票のみの決済サマリーを生成
+   * @returns {string} TSV形式の物販決済サマリーデータ
+   */
+  const getMerchandisePaymentSummaryTsv = () => {
+    const merchandiseSlips = manualSlips.filter(slip => slip.type === '物販');
+    if (merchandiseSlips.length === 0) {
+      return '物販伝票なし';
+    }
+
+    // 物販伝票を決済ツール別に集計
+    const paymentToolSummary = {};
+    let totalAmount = 0;
+
+    merchandiseSlips.forEach(slip => {
+      const tool = slip.paymentTool || 'Cash';
+      const amount = parseFloat(slip.amount) || 0;
+      
+      if (!paymentToolSummary[tool]) {
+        paymentToolSummary[tool] = 0;
+      }
+      paymentToolSummary[tool] += amount;
+      totalAmount += amount;
+    });
+
+    // 楽天カテゴリの定義
+    const appGroup = ['R Pay', 'AU Pay'];
+    const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO', 'WAON'];
+    const creditCardGroup = ['Credit Card'];
+
+    // 楽天グループの集計
+    const rakutenGroupTotals = {
+      'アプリ決済': 0,
+      'タッチ決済': 0,
+      'カード決済': 0
+    };
+
+    const otherSales = {};
+
+    // 決済ツールを分類
+    Object.entries(paymentToolSummary).forEach(([tool, total]) => {
+      if (appGroup.includes(tool)) {
+        rakutenGroupTotals['アプリ決済'] += total;
+      } else if (touchGroup.includes(tool)) {
+        rakutenGroupTotals['タッチ決済'] += total;
+      } else if (creditCardGroup.includes(tool)) {
+        rakutenGroupTotals['カード決済'] += total;
+      } else {
+        otherSales[tool] = total;
+      }
+    });
+
+    // TSV形式のデータを作成（大分類ごとの合計のみ）
+    const headers = ['大分類', '合計売上金額'];
+    const headerString = headers.join('\t');
+    const rows = [];
+
+    // 楽天カテゴリがある場合
+    const rakutenGrandTotal = Object.values(rakutenGroupTotals).reduce((sum, total) => sum + total, 0);
+    if (rakutenGrandTotal > 0) {
+      rows.push(['楽天', rakutenGrandTotal].join('\t'));
+    }
+
+    // その他の決済ツール
+    Object.entries(otherSales).forEach(([tool, total]) => {
+      rows.push([tool, total].join('\t'));
+    });
+
+    // 合計行
+    rows.push(['合計', totalAmount].join('\t'));
 
     return [headerString, ...rows].join('\n');
   };
@@ -550,13 +655,18 @@ export default function Home() {
   const handleCopyAllDataToClipboard = () => {
     let combinedTsv = '';
 
-    const paymentSummaryTsv = getPaymentSummaryTsv();    if (paymentSummaryTsv) {      combinedTsv += '--- 決済サマリー ---
-';      combinedTsv += paymentSummaryTsv + '
-
-';    }
+    const paymentSummaryTsv = getPaymentSummaryTsv();
+    if (paymentSummaryTsv) {
+      combinedTsv += '--- 決済サマリー ---\n';
+      combinedTsv += paymentSummaryTsv + '\n\n';
+    }
 
     const merchandiseSlipsTsv = getMerchandiseSlipsTsv();
     combinedTsv += '--- 伝票一覧 (物販) ---\n' + merchandiseSlipsTsv + '\n\n';
+
+    // 物販決済サマリーを追加
+    const merchandisePaymentSummaryTsv = getMerchandisePaymentSummaryTsv();
+    combinedTsv += '--- 物販決済サマリー ---\n' + merchandisePaymentSummaryTsv + '\n\n';
 
     const allTransactionsTsv = getAllTransactionsTsv();
     if (allTransactionsTsv) {
@@ -792,7 +902,7 @@ export default function Home() {
     delete salesByTool['不明'];
 
     const appGroup = ['R Pay', 'AU Pay'];
-    const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO'];
+    const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO', 'WAON'];
     const creditCardGroup = ['Credit Card'];
     const rakutenGroupTotals = { 'アプリ決済': 0, 'タッチ決済': 0, 'カード決済': 0 };
     const otherSales = {};
@@ -1154,6 +1264,9 @@ export default function Home() {
               </button>
               <button onClick={() => navigator.clipboard.writeText(getMerchandiseSlipsTsv()).then(() => alert('伝票一覧 (物販) がクリップボードにコピーされました。')).catch(err => console.error('伝票一覧 (物販) のコピーに失敗しました:', err))} className={styles.clipboardButton}>
                 伝票一覧 (物販) をコピー
+              </button>
+              <button onClick={handleCopyMerchandisePaymentSummary} className={styles.clipboardButton}>
+                物販決済サマリーをコピー
               </button>
               <button onClick={handleCopyToClipboard} className={styles.clipboardButton}>
                 取引一覧をコピー

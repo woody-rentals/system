@@ -7,7 +7,7 @@ export const paymentToolOptions = [
   '交通系',
   'R Edy',
   'NANACO',
-  'Waon',
+  'WAON',
   'R Pay',
   'AU Pay',
   'ふるさと納税',
