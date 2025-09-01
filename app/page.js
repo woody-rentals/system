@@ -226,7 +226,11 @@ export default function Home() {
   const processDataForStore = (allData, storeName) => {
     let filteredData;
     
-    if (storeName) {
+    if (storeName === '__NO_STORE__') {
+      // 店舗未登録のデータ（貸出店舗が空白）のみをフィルタ
+      filteredData = allData.filter(row => !row['貸出店舗'] || row['貸出店舗'].trim() === '');
+      setSelectedStore('店舗未登録');
+    } else if (storeName) {
       // 指定された店舗のデータのみをフィルタ
       filteredData = allData.filter(row => row['貸出店舗'] === storeName);
       setSelectedStore(storeName);
@@ -1248,24 +1252,20 @@ export default function Home() {
       {isClient && (
         <UnknownTransactionsTable 
           unknownPaymentToolData={unknownPaymentToolData} 
-          checkedRows={checkedRows} 
           editedUnknownRows={editedUnknownRows} 
           applicationNumberTotals={applicationNumberTotals} 
           handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
           handleDeleteUnknownItem={handleTransactionDelete} 
-          setCheckedRows={setCheckedRows} 
         />
       )}
 
       {isClient && attentionStatusData.length > 0 && (
         <AttentionStatusTransactionsTable 
           attentionStatusData={attentionStatusData} 
-          checkedRows={checkedRows} 
           applicationNumberTotals={applicationNumberTotals} 
           handleDeleteUnknownItem={(index) => {
             setAttentionStatusData(prevData => prevData.filter((_, i) => i !== index));
           }} 
-          setCheckedRows={setCheckedRows} 
         />
       )}
 
@@ -1395,6 +1395,12 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            <button 
+              onClick={() => handleStoreSelection('__NO_STORE__')}
+              className={styles.allStoresButton}
+            >
+              店舗未登録のデータを処理
+            </button>
             <button 
               onClick={() => handleStoreSelection(null)}
               className={styles.allStoresButton}

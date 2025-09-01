@@ -3,10 +3,8 @@ import styles from '../app/page.module.scss';
 
 export default function AttentionStatusTransactionsTable({ 
   attentionStatusData, 
-  checkedRows, 
   applicationNumberTotals, 
-  handleDeleteUnknownItem, 
-  setCheckedRows 
+  handleDeleteUnknownItem 
 }) {
   const handleDeleteWithConfirmation = (index) => {
     if (window.confirm('この取引を削除してもよろしいですか？')) {
@@ -20,11 +18,10 @@ export default function AttentionStatusTransactionsTable({
       <h2 id="attention-status-transactions" className={styles.sectionTitle}>注意するステータスの取引</h2>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
-          <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>ステータス</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+          <thead><tr><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>ステータス</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
           <tbody>
             {attentionStatusData.map((item, index) => (
-              <tr key={index} className={`${checkedRows[index] ? styles.checkedRow : ''}`}>
-                <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
+              <tr key={index}>
                 <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td className={styles.amountCell}>{item.金額.toLocaleString()}円</td>
                 <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
                 <td className={styles.paymentToolColumn}>{item['決済ツール名'] || ''}</td>

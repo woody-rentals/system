@@ -4,12 +4,10 @@ import { paymentToolOptions } from '../data/paymentTools.js';
 
 export default function UnknownTransactionsTable({ 
   unknownPaymentToolData, 
-  checkedRows, 
   editedUnknownRows, 
   applicationNumberTotals, 
   handleUnknownPaymentToolChange, 
-  handleDeleteUnknownItem, 
-  setCheckedRows 
+  handleDeleteUnknownItem 
 }) {
   if (unknownPaymentToolData.length === 0) return null;
 
@@ -18,11 +16,10 @@ export default function UnknownTransactionsTable({
       <h2 id="unknown-transactions" className={styles.sectionTitle}>決済ツール不明の取引</h2>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
-          <thead><tr><th></th><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>ステータス</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
+          <thead><tr><th>申込番号</th><th>枝番</th><th>お名前</th><th>金額</th><th>申込番号合計</th><th className={styles.paymentToolColumn}>決済ツール</th><th>ステータス</th><th>貸出日</th><th>貸出店舗</th><th style={{minWidth: '15rem'}}>メモ</th><th>決済時間</th><th>貸出日時</th><th>決済方法</th><th>プロモコード</th><th>窓口</th><th>変動価格</th><th>操作</th></tr></thead>
           <tbody>
             {unknownPaymentToolData.map((item, index) => (
-              <tr key={index} className={`${checkedRows[index] ? styles.checkedRow : ''} ${editedUnknownRows[index] ? styles.editedUnknownRow : ''}`}>
-                <td><input type="checkbox" checked={!!checkedRows[index]} onChange={() => setCheckedRows(prev => ({...prev, [index]: !prev[index]}))} /></td>
+              <tr key={index} className={`${editedUnknownRows[index] ? styles.editedUnknownRow : ''}`}>
                 <td>{item.申込番号}</td><td>{item.枝番}</td><td>{item.お名前}</td><td className={styles.amountCell}>{item.金額.toLocaleString()}円</td>
                 <td>{item.枝番 === '1' && applicationNumberTotals[item.申込番号] ? applicationNumberTotals[item.申込番号].toLocaleString() + '円' : ''}</td>
                 <td className={styles.paymentToolColumn}>
