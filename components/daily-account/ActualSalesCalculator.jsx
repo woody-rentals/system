@@ -1,5 +1,5 @@
 'use client';
-import styles from '../app/page.module.scss';
+import styles from '@/app/daily-account/page.module.scss';
 
 export default function ActualSalesCalculator({ 
   paymentTableDisplayData, 

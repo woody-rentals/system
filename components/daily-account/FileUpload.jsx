@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import styles from '../app/page.module.scss';
+import styles from '@/app/daily-account/page.module.scss';
 
 export default function FileUpload({ processFile, uploadedFileName, error }) {
   const [isDragging, setIsDragging] = useState(false);

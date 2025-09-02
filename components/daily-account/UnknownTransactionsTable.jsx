@@ -1,6 +1,6 @@
 'use client';
-import styles from '../app/page.module.scss';
-import { paymentToolOptions } from '../data/paymentTools.js';
+import { paymentToolOptions } from '@/data/daily-account/paymentTools.js';
+import styles from '@/app/daily-account/page.module.scss';
 
 export default function UnknownTransactionsTable({ 
   unknownPaymentToolData, 
