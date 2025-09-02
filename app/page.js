@@ -1312,6 +1312,16 @@ export default function Home() {
         />
       )}
 
+      {isClient && (
+        <UnknownTransactionsTable 
+          unknownPaymentToolData={unknownPaymentToolData} 
+          editedUnknownRows={editedUnknownRows} 
+          applicationNumberTotals={applicationNumberTotals} 
+          handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
+          handleDeleteUnknownItem={handleTransactionDelete} 
+        />
+      )}
+
       {isClient && attentionStatusData.length > 0 && (
         <AttentionStatusTransactionsTable 
           attentionStatusData={attentionStatusData} 
@@ -1325,16 +1335,6 @@ export default function Home() {
               setCsvData(prevCsvData => prevCsvData.filter(row => row.originalIndex !== itemToDelete.originalIndex));
             }
           }} 
-        />
-      )}
-
-      {isClient && (
-        <UnknownTransactionsTable 
-          unknownPaymentToolData={unknownPaymentToolData} 
-          editedUnknownRows={editedUnknownRows} 
-          applicationNumberTotals={applicationNumberTotals} 
-          handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
-          handleDeleteUnknownItem={handleTransactionDelete} 
         />
       )}
 
