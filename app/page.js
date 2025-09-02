@@ -962,7 +962,7 @@ export default function Home() {
         amount: parseFloat(row['金額']),
         source: 'csv'
       })),
-      ...currentManualSlips.map(slip => ({
+      ...currentManualSlips.filter(slip => slip.type !== '物販').map(slip => ({
         ...slip,
         amount: parseFloat(slip.amount),
         source: 'manual',
