@@ -1312,6 +1312,22 @@ export default function Home() {
         />
       )}
 
+      {isClient && attentionStatusData.length > 0 && (
+        <AttentionStatusTransactionsTable 
+          attentionStatusData={attentionStatusData} 
+          applicationNumberTotals={applicationNumberTotals} 
+          handleDeleteUnknownItem={(index) => {
+            const itemToDelete = attentionStatusData[index];
+            // Remove from attention status data
+            setAttentionStatusData(prevData => prevData.filter((_, i) => i !== index));
+            // Remove from CSV data if it has originalIndex
+            if (itemToDelete.originalIndex !== undefined) {
+              setCsvData(prevCsvData => prevCsvData.filter(row => row.originalIndex !== itemToDelete.originalIndex));
+            }
+          }} 
+        />
+      )}
+
       {isClient && (
         <UnknownTransactionsTable 
           unknownPaymentToolData={unknownPaymentToolData} 
@@ -1319,16 +1335,6 @@ export default function Home() {
           applicationNumberTotals={applicationNumberTotals} 
           handleUnknownPaymentToolChange={handleUnknownPaymentToolChange} 
           handleDeleteUnknownItem={handleTransactionDelete} 
-        />
-      )}
-
-      {isClient && attentionStatusData.length > 0 && (
-        <AttentionStatusTransactionsTable 
-          attentionStatusData={attentionStatusData} 
-          applicationNumberTotals={applicationNumberTotals} 
-          handleDeleteUnknownItem={(index) => {
-            setAttentionStatusData(prevData => prevData.filter((_, i) => i !== index));
-          }} 
         />
       )}
 
