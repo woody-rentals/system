@@ -330,6 +330,34 @@ $black: #000000;
   gap: 0.5rem;
   flex-grow: 1; /* Allow search inputs to take available space */
   flex-wrap: wrap; /* Allow search inputs to wrap */
+  align-items: center; /* Center align items vertically */
+}
+
+.filterToggleContainer {
+  display: flex;
+  align-items: center;
+  margin-left: 1rem;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+  color: $dark-gray;
+}
+
+.toggleCheckbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: $primary-blue;
+}
+
+.toggleText {
+  white-space: nowrap;
 }
 
 .searchInput {

@@ -96,12 +96,54 @@ export default function Home() {
   const [amountSearchTerm, setAmountSearchTerm] = useState('');
   const [applicationNumberSearchTerm, setApplicationNumberSearchTerm] = useState('');
   const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [showOnSitePaymentOnly, setShowOnSitePaymentOnly] = useState(false); // State for on-site payment filter
 
   useEffect(() => {
-    if (hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0 || manualTransactions.length > 0) {
+    if (csvData.length > 0 || hasProcessed || manualSlips.length > 0 || unknownPaymentToolData.length > 0 || manualTransactions.length > 0) {
       processAllData(csvData, manualSlips, unknownPaymentToolData, manualTransactions);
     }
   }, [csvData, manualSlips, unknownPaymentToolData, manualTransactions, hasProcessed]);
+
+  useEffect(() => {
+    // knownTransactionsData updated
+  }, [knownTransactionsData]);
+
+  // ページ離脱・更新時の確認アラート
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // データが存在する場合のみ確認メッセージを表示
+      if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
+        const message = 'ページを更新または離脱すると、入力したデータが失われます。続行しますか？';
+        event.preventDefault();
+        event.returnValue = message;
+        return message;
+      }
+    };
+
+    const handlePopState = (event) => {
+      // データが存在する場合のみ確認メッセージを表示
+      if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
+        const confirmLeave = window.confirm('ページを離脱すると、入力したデータが失われます。続行しますか？');
+        if (!confirmLeave) {
+          // ユーザーがキャンセルした場合、履歴を元に戻す
+          window.history.pushState(null, '', window.location.href);
+        }
+      }
+    };
+
+    // イベントリスナーを追加
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // 履歴にエントリを追加（戻るボタン対策）
+    window.history.pushState(null, '', window.location.href);
+
+    // クリーンアップ
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [csvData, manualSlips, knownTransactionsData]);
 
   useEffect(() => {
     const newParentSums = {};
@@ -163,8 +205,14 @@ export default function Home() {
       );
     }
 
+    if (showOnSitePaymentOnly) {
+      filtered = filtered.filter(item => 
+        item.決済方法 === '現地払い'
+      );
+    }
+
     setFilteredTransactions(filtered);
-  }, [amountSearchTerm, applicationNumberSearchTerm, knownTransactionsData, applicationNumberTotals]);
+  }, [amountSearchTerm, applicationNumberSearchTerm, showOnSitePaymentOnly, knownTransactionsData, applicationNumberTotals]);
 
   const resetState = () => {
     setCsvData([]);
@@ -181,6 +229,7 @@ export default function Home() {
     setAmountSearchTerm('');
     setApplicationNumberSearchTerm('');
     setFilteredTransactions([]);
+    setShowOnSitePaymentOnly(false);
     setAvailableStores([]);
     setSelectedStore('');
     setShowStoreSelection(false);
@@ -361,6 +410,47 @@ export default function Home() {
     }
   };
 
+  const handleDuplicateAction = (action) => {
+    if (!duplicateModalData) return;
+
+    const { type, duplicates, newData } = duplicateModalData;
+
+    if (action === 'cancel') {
+      setShowDuplicateModal(false);
+      setDuplicateModalData(null);
+      return;
+    }
+
+    if (type === 'manualSlips') {
+      if (action === 'replace') {
+        // Remove existing duplicates and add new data
+        setManualSlips(prev => [
+          ...prev.filter(slip => !duplicates.some(d => d.slipNumber === slip.slipNumber)),
+          ...newData
+        ]);
+      } else if (action === 'add') {
+        // Add all new data including duplicates
+        setManualSlips(prev => [...prev, ...newData]);
+      }
+      alert(`${newData.length}件の伝票を読み込みました。`);
+    } else if (type === 'transactions') {
+      if (action === 'replace') {
+        // Remove existing duplicates and add new data
+        setCsvData(prev => [
+          ...prev.filter(t => !duplicates.some(d => d['申込番号'] === t['申込番号'])),
+          ...newData
+        ]);
+      } else if (action === 'add') {
+        // Add all new data including duplicates
+        setCsvData(prev => [...prev, ...newData]);
+      }
+      alert(`${newData.length}件の取引を読み込みました。`);
+    }
+
+    setShowDuplicateModal(false);
+    setDuplicateModalData(null);
+  };
+
   const handleUnknownPaymentToolChange = (index, value) => {
     setUnknownPaymentToolData(prevData => {
       const newData = [...prevData];
@@ -530,15 +620,151 @@ export default function Home() {
     });
   };
 
+  /**
+   * 物販を除外した決済サマリーを生成
+   * @param {Array} dataToProcess - 処理対象のデータ
+   * @returns {Array} 決済サマリーデータ
+   */
+  const generatePaymentSummaryExcludingMerchandise = (dataToProcess) => {
+    const salesByTool = {};
+    
+    dataToProcess.forEach(transaction => {
+      const amount = parseFloat(transaction.amount) || 0;
+      let finalTool = '';
+      const finalMethod = transaction['決済方法'] || '';
+
+      if (transaction.source === 'csv') {
+        const assignedToolItem = unknownPaymentToolData.find(item =>
+          item.originalIndex === transaction.originalIndex && item.selectedPaymentTool && item.selectedPaymentTool !== ''
+        );
+
+        if (assignedToolItem) {
+          finalTool = assignedToolItem.selectedPaymentTool;
+        } else if (finalMethod && finalMethod.trim().toLowerCase() === 'カード払い') {
+          finalTool = '事前カード';
+        } else if (transaction['決済ツール名'] && transaction['決済ツール名'].trim() !== '' && transaction['決済ツール名'].trim().toLowerCase() !== '不明') {
+          finalTool = transaction['決済ツール名'];
+        } else if ((!transaction['決済ツール名'] || transaction['決済ツール名'].trim() === '' || transaction['決済ツール名'].trim().toLowerCase() === '不明') && (finalMethod && (finalMethod.trim().toLowerCase() === '現地決済' || finalMethod.trim().toLowerCase() === '現地払い'))) {
+          finalTool = '不明';
+        } else {
+          finalTool = '不明';
+        }
+      } else if (transaction.source === 'manual') {
+        finalTool = transaction.paymentTool;
+      } else if (transaction.source === 'manual-transaction') {
+        finalTool = transaction.決済ツール名 || 'Cash';
+      }
+
+      if (finalTool) {
+        if (!salesByTool[finalTool]) salesByTool[finalTool] = 0;
+        salesByTool[finalTool] += amount;
+      }
+    });
+
+    const finalUnknownTotal = salesByTool['不明'] || 0;
+    delete salesByTool['不明'];
+
+    const appGroup = ['R Pay', 'AU Pay'];
+    const touchGroup = ['ID', 'R Edy', 'QUIC Pay', '交通系', 'NANACO', 'WAON'];
+    const creditCardGroup = ['Credit Card'];
+    const rakutenGroupTotals = { 'アプリ決済': 0, 'タッチ決済': 0, 'カード決済': 0 };
+    const otherSales = {};
+
+    for (const [tool, total] of Object.entries(salesByTool)) {
+      if (appGroup.includes(tool)) rakutenGroupTotals['アプリ決済'] += total;
+      else if (touchGroup.includes(tool)) rakutenGroupTotals['タッチ決済'] += total;
+      else if (creditCardGroup.includes(tool)) rakutenGroupTotals['カード決済'] += total;
+      else {
+        if (!otherSales[tool]) otherSales[tool] = 0;
+        otherSales[tool] += total;
+      }
+    }
+
+    if (otherSales['Cash'] === undefined) {
+      otherSales['Cash'] = 0;
+    }
+
+    const rakutenGrandTotal = Object.values(rakutenGroupTotals).reduce((sum, total) => sum + total, 0);
+    
+    const paymentSummaryData = [];
+    paymentSummaryData.push({ 大分類: '楽天', 中分類: '', 小分類: '', 合計売上金額: rakutenGrandTotal, isTotalRow: true });
+    for (const [groupName, total] of Object.entries(rakutenGroupTotals)) {
+      paymentSummaryData.push({ 大分類: '', 中分類: groupName, 小分類: '', 合計売上金額: total, isSubTotalRow: true });
+      const toolsInGroup = Object.entries(salesByTool).filter(([toolName]) => {
+        if (groupName === 'アプリ決済') return appGroup.includes(toolName);
+        if (groupName === 'タッチ決済') return touchGroup.includes(toolName);
+        if (groupName === 'カード決済') return creditCardGroup.includes(toolName);
+        return false;
+      });
+      toolsInGroup.forEach(([toolName, toolTotal]) => paymentSummaryData.push({ 大分類: '', 中分類: '', 小分類: toolName, 合計売上金額: toolTotal }));
+    }
+    const otherDataSource = Object.entries(otherSales).map(([paymentTool, total]) => ({ paymentTool, total })).sort((a, b) => b.total - a.total);
+    otherDataSource.forEach(item => paymentSummaryData.push({ 大分類: item.paymentTool, 中分類: '', 小分類: '', 合計売上金額: item.total }));
+    if (finalUnknownTotal > 0) paymentSummaryData.push({ 大分類: '不明', 中分類: '', 小分類: '', 合計売上金額: finalUnknownTotal });
+    
+    return paymentSummaryData;
+  };
+
   const handleCopyPaymentSummary = () => {
-    if (paymentTableDisplayData.length === 0) {
+    console.log('handleCopyPaymentSummary関数が呼ばれました');
+    
+    // 現在のデータを取得
+    const currentCombinedData = [
+      ...csvData.map((row, index) => ({
+        ...row,
+        id: `csv-${row.originalIndex || index}`,
+        amount: parseFloat(row['金額']),
+        source: 'csv'
+      })),
+      ...manualSlips.map(slip => ({
+        ...slip,
+        amount: parseFloat(slip.amount),
+        source: 'manual',
+        '申込番号': slip.slipNumber ? `伝票 ${slip.slipNumber}` : '',
+        'お名前': slip.name,
+        'メモ': slip.memo,
+        '決済方法': '',
+        '決済ツール名': slip.paymentTool,
+        type: slip.type || '一般'
+      })),
+      ...knownTransactionsData.filter(t => t.source === 'manual-transaction')
+    ];
+
+    console.log('csvData:', csvData.length);
+    console.log('manualSlips:', manualSlips.length);
+    console.log('knownTransactionsData:', knownTransactionsData.length);
+
+    // デバッグ: 物販データの確認
+    const merchandiseData = currentCombinedData.filter(item => item.source === 'manual' && item.type === '物販');
+    console.log('物販データ:', merchandiseData);
+    console.log('物販データの金額合計:', merchandiseData.reduce((sum, item) => sum + (item.amount || 0), 0));
+
+    // 物販を除外した決済サマリーを生成
+    const generalDataOnly = currentCombinedData.filter(item => {
+      // 手動伝票の場合は物販を除外
+      if (item.source === 'manual' && item.type === '物販') {
+        return false;
+      }
+      return true;
+    });
+
+    console.log('物販除外前のデータ数:', currentCombinedData.length);
+    console.log('物販除外後のデータ数:', generalDataOnly.length);
+    console.log('物販除外前の合計金額:', currentCombinedData.reduce((sum, item) => sum + (item.amount || 0), 0));
+    console.log('物販除外後の合計金額:', generalDataOnly.reduce((sum, item) => sum + (item.amount || 0), 0));
+
+    // 物販を除外したデータで決済サマリーを再計算
+    const generalPaymentSummary = generatePaymentSummaryExcludingMerchandise(generalDataOnly);
+    
+    if (generalPaymentSummary.length === 0) {
       alert('コピーするデータがありません。');
       return;
     }
+    
     const headers = ['大分類', '中分類', '小分類', '合計売上金額'];
     const headerString = headers.join('\t');
 
-    const rows = paymentTableDisplayData.map(item => {
+    const rows = generalPaymentSummary.map(item => {
       const rowData = [
         item.大分類 || '',
         item.中分類 || '',
@@ -548,12 +774,17 @@ export default function Home() {
       return rowData.join('\t');
     });
 
-    const totalRow = ['合計', '', '', overallTotal].join('\t');
+    // 物販を除いた合計金額を計算
+    const generalTotal = generalDataOnly.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalRow = ['合計', '', '', generalTotal].join('\t');
     rows.push(totalRow);
+
+    console.log('生成された決済サマリー:', generalPaymentSummary);
+    console.log('TSVデータ:', [headerString, ...rows].join('\n'));
 
     const tsvString = [headerString, ...rows].join('\n');
     navigator.clipboard.writeText(tsvString).then(() => {
-      alert('決済サマリーがクリップボードにコピーされました。');
+      alert('決済サマリー（物販除く）がクリップボードにコピーされました。');
     }).catch(err => {
       console.error('決済サマリーのコピーに失敗しました:', err);
       alert('決済サマリーのコピーに失敗しました。');
@@ -606,6 +837,69 @@ export default function Home() {
       console.error('物販決済サマリーのコピーに失敗しました:', err);
       alert('物販決済サマリーのコピーに失敗しました。');
     });
+  };
+
+  /**
+   * 物販を除外した決済サマリーのTSVを取得
+   * @returns {string} TSV形式の決済サマリーデータ（物販除く）
+   */
+  const getPaymentSummaryTsvExcludingMerchandise = () => {
+    // 現在のデータを取得
+    const currentCombinedData = [
+      ...csvData.map((row, index) => ({
+        ...row,
+        id: `csv-${row.originalIndex || index}`,
+        amount: parseFloat(row['金額']),
+        source: 'csv'
+      })),
+      ...manualSlips.map(slip => ({
+        ...slip,
+        amount: parseFloat(slip.amount),
+        source: 'manual',
+        '申込番号': slip.slipNumber ? `伝票 ${slip.slipNumber}` : '',
+        'お名前': slip.name,
+        'メモ': slip.memo,
+        '決済方法': '',
+        '決済ツール名': slip.paymentTool,
+        type: slip.type || '一般'
+      })),
+      ...knownTransactionsData.filter(t => t.source === 'manual-transaction')
+    ];
+
+    // 物販を除外
+    const generalDataOnly = currentCombinedData.filter(item => {
+      if (item.source === 'manual' && item.type === '物販') {
+        return false;
+      }
+      return true;
+    });
+
+    // 物販を除外したデータで決済サマリーを再計算
+    const generalPaymentSummary = generatePaymentSummaryExcludingMerchandise(generalDataOnly);
+    
+    if (generalPaymentSummary.length === 0) return '';
+    
+    // 大分類ごとに合計を集計
+    const categoryTotals = {};
+    generalPaymentSummary.forEach(item => {
+      const mainCategory = item.大分類;
+      if (mainCategory && mainCategory.trim() !== '') {
+        if (!categoryTotals[mainCategory]) {
+          categoryTotals[mainCategory] = 0;
+        }
+        categoryTotals[mainCategory] += (item.合計売上金額 || 0);
+      }
+    });
+    
+    const rows = Object.entries(categoryTotals).map(([category, total]) => {
+      return [category, total].join('\t');
+    });
+    
+    // 物販を除いた合計金額を計算
+    const generalTotal = generalDataOnly.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalRow = ['合計', generalTotal].join('\t');
+    rows.push(totalRow);
+    return rows.join('\n');
   };
 
   const getPaymentSummaryTsv = () => {
@@ -784,9 +1078,10 @@ export default function Home() {
   const handleCopyAllDataToClipboard = () => {
     let combinedTsv = '';
 
-    const paymentSummaryTsv = getPaymentSummaryTsv();
+    // 物販を除外した決済サマリーを使用
+    const paymentSummaryTsv = getPaymentSummaryTsvExcludingMerchandise();
     if (paymentSummaryTsv) {
-      combinedTsv += '--- 決済サマリー ---\n';
+      combinedTsv += '--- 決済サマリー（物販除く） ---\n';
       combinedTsv += paymentSummaryTsv + '\n\n';
     }
 
@@ -855,105 +1150,6 @@ export default function Home() {
     alert('伝票データがCSVとしてダウンロードされました。');
   };
 
-  const handleSaveTransactionsToCsv = () => {
-    if (knownTransactionsData.length === 0) {
-      alert('保存する取引がありません。');
-      return;
-    }
-
-    const headers = [
-      '申込番号', '枝番', 'お名前', '金額', '決済ツール', '貸出日', '貸出店舗', 'メモ', '決済時間', '貸出日時', '決済方法', 'ステータス', 'プロモコード', '窓口', '変動価格'
-    ];
-
-    const dataToSave = knownTransactionsData.map(item => ({
-      '申込番号': item['申込番号'] || '',
-      '枝番': item['枝番'] || '',
-      'お名前': item['お名前'] || '',
-      '金額': item.amount || 0,
-      '決済ツール': item.tool || '',
-      '貸出日': item['貸出日'] || '',
-      '貸出店舗': item['貸出店舗'] || '',
-      'メモ': item.memo || '',
-      '決済時間': item['決済時間'] || '',
-      '貸出日時': item['貸出日時'] || '',
-      '決済方法': item.method || '',
-      'プロモコード': item['プロモコード'] || '',
-      '窓口': item['窓口'] || '',
-      '変動価格': item['変動価格'] || ''
-    }));
-
-    const now = new Date();
-    const formattedDate = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const formattedTime = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-    const filename = `取引一覧一時保存_${formattedDate}-${formattedTime}.csv`;
-
-    const csv = Papa.unparse(dataToSave, { header: true });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    alert('取引データがCSVとしてダウンロードされました。');
-  };
-
-  const processTransactionsFile = (file) => {
-    if (!file || !file.name.endsWith('.csv')) {
-      setError('CSVファイルを選択してください。');
-      return;
-    }
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const allNewData = results.data.map(row => ({
-          ...row,
-          id: `csv-${Date.now() + Math.random()}`,
-          amount: parseFloat(row['金額']) || 0,
-          source: 'csv',
-          tool: row['決済ツール'] || '',
-          method: row['決済方法'] || '',
-          memo: row['メモ'] || '',
-        })).filter(t => t.amount > 0);
-
-        const newSlips = allNewData.filter(t => t.申込番号 && t.申込番号.startsWith('伝票 '));
-        const newTransactions = allNewData.filter(t => !t.申込番号 || !t.申込番号.startsWith('伝票 '));
-
-        // Process slips first
-        if (newSlips.length > 0) {
-          const existingSlipNumbers = new Set(manualSlips.map(s => s.slipNumber));
-          const uniqueNewSlips = newSlips.filter(s => !existingSlipNumbers.has(s.申込番号.replace('伝票 ', '')));
-          setManualSlips(prev => [...prev, ...uniqueNewSlips.map(s => ({
-            id: s.id,
-            slipNumber: s.申込番号.replace('伝票 ', ''),
-            name: s.お名前 || '',
-            amount: s.amount,
-            paymentTool: s.tool || 'Cash',
-            memo: s.memo || ''
-          }))]);
-          alert(`${uniqueNewSlips.length}件の伝票を読み込みました。`);
-        }
-
-        // Process transactions
-        if (newTransactions.length > 0) {
-          const existingApplicationNumbers = new Set(knownTransactionsData.map(t => t.申込番号));
-          const duplicates = newTransactions.filter(t => existingApplicationNumbers.has(t.申込番号));
-
-          if (duplicates.length > 0) {
-            setDuplicateModalData({ type: 'transactions', duplicates, existingData: knownTransactionsData, newData: newTransactions });
-            setShowDuplicateModal(true);
-            return;
-          } else {
-            setCsvData(prev => [...prev, ...newTransactions]);
-            alert(`${newTransactions.length}件の取引を読み込みました。`);
-          }
-        }
-      },
-      error: (err) => setError(`取引CSVの解析中にエラーが発生しました: ${err.message}`)
-    });
-  };
-
   const processAllData = (currentCsvData, currentManualSlips, currentUnknownPaymentToolData, currentManualTransactions = []) => {
     const allTransactions = [
       ...currentCsvData.map((row, index) => ({
@@ -962,7 +1158,7 @@ export default function Home() {
         amount: parseFloat(row['金額']),
         source: 'csv'
       })),
-      ...currentManualSlips.filter(slip => slip.type !== '物販').map(slip => ({
+      ...currentManualSlips.map(slip => ({
         ...slip,
         amount: parseFloat(slip.amount),
         source: 'manual',
@@ -1363,15 +1559,6 @@ export default function Home() {
               >
                 取引を追加
               </button>
-              {isClient && knownTransactionsData.length > 0 && (
-                <div className={styles.transactionButtonsContainer}>
-                  <button onClick={handleSaveTransactionsToCsv} className={`${styles.fileInputLabel} ${styles.smallButton} ${styles.saveButton}`}>取引一時保存 (CSVをDL)</button>
-                  <div className={styles.fileInputContainer}>
-                    <input id="transactions-upload" type="file" accept=".csv" onChange={(e) => processTransactionsFile(e.target.files[0])} className={styles.fileInput} />
-                    <label htmlFor="transactions-upload" className={`${styles.fileInputLabel} ${styles.smallButton}`}>取引CSVをUP</label>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <div className={styles.searchAndButtonsContainer}>
@@ -1390,6 +1577,17 @@ export default function Home() {
                 onChange={(e) => setApplicationNumberSearchTerm(e.target.value)}
                 className={styles.searchInput}
               />
+              <div className={styles.filterToggleContainer}>
+                <label className={styles.toggleLabel}>
+                  <input
+                    type="checkbox"
+                    checked={showOnSitePaymentOnly}
+                    onChange={(e) => setShowOnSitePaymentOnly(e.target.checked)}
+                    className={styles.toggleCheckbox}
+                  />
+                  <span className={styles.toggleText}>現地払いのみ表示</span>
+                </label>
+              </div>
             </div>
           </div>
           <TransactionTable 
@@ -1420,7 +1618,10 @@ export default function Home() {
           <a href="#unknown-transactions">不明取引</a>
           <a href="#transactions-list">取引一覧</a>
           <a href="#marketing-metrics">マーケ指標</a>
-          <button onClick={() => setShowCompletionPopup(true)} className={styles.completeButton}>完了</button>
+          <button onClick={() => {
+            console.log('完了ボタンがクリックされました');
+            setShowCompletionPopup(true);
+          }} className={styles.completeButton}>完了</button>
         </div>
       )}
 
@@ -1432,7 +1633,10 @@ export default function Home() {
               <button onClick={handleCopyAllDataToClipboard} className={`${styles.clipboardButton} ${styles.copyAllButton}`}>
                 全てをコピー
               </button>
-              <button onClick={handleCopyPaymentSummary} className={styles.clipboardButton}>
+              <button onClick={() => {
+                console.log('決済サマリーをコピーボタンがクリックされました');
+                handleCopyPaymentSummary();
+              }} className={styles.clipboardButton}>
                 決済サマリーをコピー
               </button>
               <button onClick={() => navigator.clipboard.writeText(getMerchandiseSlipsTsv()).then(() => alert('伝票一覧 (物販) がクリップボードにコピーされました。')).catch(err => console.error('伝票一覧 (物販) のコピーに失敗しました:', err))} className={styles.clipboardButton}>
