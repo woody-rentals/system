@@ -55,6 +55,11 @@ export default function Home() {
   const [finalCashTotal, setFinalCashTotal] = useState(0); // 最終的な現金合計
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [showSubCategories, setShowSubCategories] = useState(false);
+  
+  // State for custom warning alert
+  const [showWarningAlert, setShowWarningAlert] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   // State for store selection
   const [availableStores, setAvailableStores] = useState([]);
@@ -108,26 +113,78 @@ export default function Home() {
     // knownTransactionsData updated
   }, [knownTransactionsData]);
 
+  // ユーザーインタラクションを検知
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      console.log('User interaction detected');
+      setHasUserInteracted(true);
+      
+      // インタラクション後、より確実にbeforeunloadを設定
+      const setupBeforeUnload = () => {
+        if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
+          window.onbeforeunload = (e) => {
+            const message = 'Changes you made may not be saved.';
+            e.returnValue = message;
+            return message;
+          };
+        }
+      };
+      
+      setupBeforeUnload();
+    };
+
+    // 様々なユーザーインタラクションを検知
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('keydown', handleUserInteraction);
+    document.addEventListener('input', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+      document.removeEventListener('input', handleUserInteraction);
+    };
+  }, [csvData, manualSlips, knownTransactionsData]);
+
   // ページ離脱・更新時の確認アラート
   useEffect(() => {
     const handleBeforeUnload = (event) => {
-      // データが存在する場合のみ確認メッセージを表示
-      if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
-        const message = 'ページを更新または離脱すると、入力したデータが失われます。続行しますか？';
+      console.log('beforeunload event triggered');
+      console.log('csvData.length:', csvData.length);
+      console.log('manualSlips.length:', manualSlips.length);
+      console.log('knownTransactionsData.length:', knownTransactionsData.length);
+      console.log('hasUserInteracted:', hasUserInteracted);
+      
+      // データが存在し、かつユーザーがインタラクションしている場合のみ確認メッセージを表示
+      const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
+      
+      if (hasData && hasUserInteracted) {
+        console.log('beforeunload: showing confirmation dialog');
+        
+        // 複数の方法でbeforeunloadを設定
         event.preventDefault();
+        event.stopPropagation();
+        
+        // 異なるブラウザに対応
+        const message = 'Changes you made may not be saved.';
         event.returnValue = message;
+        
+        // 直接windowのonbeforeunloadも設定
+        window.onbeforeunload = () => message;
+        
         return message;
+      } else if (hasData && !hasUserInteracted) {
+        console.log('beforeunload: data exists but no user interaction detected');
       }
     };
 
     const handlePopState = (event) => {
-      // データが存在する場合のみ確認メッセージを表示
+      // データが存在する場合のみカスタムアラートを表示
       if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
-        const confirmLeave = window.confirm('ページを離脱すると、入力したデータが失われます。続行しますか？');
-        if (!confirmLeave) {
-          // ユーザーがキャンセルした場合、履歴を元に戻す
-          window.history.pushState(null, '', window.location.href);
-        }
+        event.preventDefault();
+        setShowWarningAlert(true);
+        setPendingNavigation('back');
+        // 履歴を元に戻す
+        window.history.pushState(null, '', window.location.href);
       }
     };
 
@@ -138,12 +195,43 @@ export default function Home() {
     // 履歴にエントリを追加（戻るボタン対策）
     window.history.pushState(null, '', window.location.href);
 
+    // 代替方法：visibilitychange イベント
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Page is being hidden (tab switch, minimize, etc.)');
+        const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
+        if (hasData && hasUserInteracted) {
+          console.log('Page hidden with unsaved data');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // クリーンアップ
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.onbeforeunload = null; // 直接設定したものもクリア
     };
-  }, [csvData, manualSlips, knownTransactionsData]);
+  }, [csvData, manualSlips, knownTransactionsData, hasUserInteracted]);
+
+  // カスタム警告アラートの処理
+  const handleWarningConfirm = () => {
+    setShowWarningAlert(false);
+    if (pendingNavigation === 'back') {
+      // 本当に戻る
+      window.removeEventListener('popstate', () => {}); // 一時的にリスナーを無効化
+      window.history.back();
+    }
+    setPendingNavigation(null);
+  };
+
+  const handleWarningCancel = () => {
+    setShowWarningAlert(false);
+    setPendingNavigation(null);
+  };
 
   useEffect(() => {
     const newParentSums = {};
@@ -1764,6 +1852,35 @@ export default function Home() {
                 <button type="button" onClick={() => setShowManualTransactionForm(false)} className={styles.cancelButton}>キャンセル</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* カスタム警告アラート */}
+      {showWarningAlert && (
+        <div className={styles.warningAlertOverlay}>
+          <div className={styles.warningAlertContent}>
+            <div className={styles.warningIcon}>⚠️</div>
+            <h2 className={styles.warningTitle}>注意</h2>
+            <p className={styles.warningMessage}>
+              このページを離れると、変更内容は失われます。
+              <br />
+              本当に続行しますか？
+            </p>
+            <div className={styles.warningButtons}>
+              <button 
+                onClick={handleWarningCancel} 
+                className={`${styles.warningButton} ${styles.warningCancelButton}`}
+              >
+                キャンセル
+              </button>
+              <button 
+                onClick={handleWarningConfirm} 
+                className={`${styles.warningButton} ${styles.warningConfirmButton}`}
+              >
+                続行
+              </button>
+            </div>
           </div>
         </div>
       )}

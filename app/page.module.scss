@@ -769,3 +769,115 @@ $black: #000000;
     }
   }
 }
+
+/* カスタム警告アラートのスタイル */
+.warningAlertOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(5px);
+}
+
+.warningAlertContent {
+  background-color: $white;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 2px solid #FF3B30; /* 警告色の赤 */
+  animation: warningPulse 0.3s ease-out;
+}
+
+@keyframes warningPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.warningIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: warningShake 0.5s ease-in-out;
+}
+
+@keyframes warningShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.warningTitle {
+  color: #FF3B30; /* 警告色の赤 */
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.warningMessage {
+  color: $black;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.warningButtons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.warningButton {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.warningCancelButton {
+  background-color: $medium-gray;
+  color: $dark-gray;
+  
+  &:hover {
+    background-color: darken($medium-gray, 10%);
+  }
+}
+
+.warningConfirmButton {
+  background-color: #FF3B30; /* 警告色の赤 */
+  color: $white;
+  
+  &:hover {
+    background-color: darken(#FF3B30, 10%);
+  }
+}
