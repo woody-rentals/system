@@ -545,7 +545,7 @@ $black: #000000;
   box-sizing: border-box;
   z-index: 1000;
 
-  a, .completeButton {
+  a, .completeButton, .clearButton {
     color: white;
     text-decoration: none;
     padding: 0.5rem 1rem;
@@ -561,6 +561,16 @@ $black: #000000;
     background-color: #4CAF50; // Green
     border: none;
     cursor: pointer;
+  }
+
+  .clearButton {
+    background-color: #f44336; // Red
+    border: none;
+    cursor: pointer;
+    
+    &:hover {
+      background-color: #d32f2f; // Darker red
+    }
   }
 }
 

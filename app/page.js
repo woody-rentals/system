@@ -61,6 +61,41 @@ export default function Home() {
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
+  // localStorage操作用のヘルパー関数
+  const saveToLocalStorage = (key, data) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  const loadFromLocalStorage = (key, defaultValue = null) => {
+    try {
+      const item = localStorage.getItem(key);
+      if (item === null) return defaultValue;
+      const parsed = JSON.parse(item);
+      return parsed;
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      return defaultValue;
+    }
+  };
+
+  const clearAllLocalStorage = () => {
+    try {
+      const keys = [
+        'csvData', 'manualSlips', 'knownTransactionsData', 'unknownPaymentToolData',
+        'actualSalesInput', 'cashCounts', 'registerAmount', 'selectedStore',
+        'paymentTableDisplayData', 'overallTotal', 'applicationNumberTotals',
+        'marketingMetrics', 'uploadedFileName' // アップロードファイル名を追加
+      ];
+      keys.forEach(key => localStorage.removeItem(key));
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+  };
+
   // State for store selection
   const [availableStores, setAvailableStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState('');
@@ -113,10 +148,153 @@ export default function Home() {
     // knownTransactionsData updated
   }, [knownTransactionsData]);
 
+  // ページ読み込み時にlocalStorageからデータを復元
+  useEffect(() => {
+    const savedCsvData = loadFromLocalStorage('csvData', []);
+    const savedManualSlips = loadFromLocalStorage('manualSlips', []);
+    const savedKnownTransactions = loadFromLocalStorage('knownTransactionsData', []);
+    const savedUnknownPaymentTools = loadFromLocalStorage('unknownPaymentToolData', []);
+    const savedActualSalesInput = loadFromLocalStorage('actualSalesInput', {});
+    const savedCashCounts = loadFromLocalStorage('cashCounts', { '10000': 0, '5000': 0, '1000': 0, '500': 0, '100': 0, '50': 0, '10': 0, '5': 0, '1': 0 });
+    const savedRegisterAmount = loadFromLocalStorage('registerAmount', 50500);
+    const savedSelectedStore = loadFromLocalStorage('selectedStore', '');
+    const savedPaymentTableDisplayData = loadFromLocalStorage('paymentTableDisplayData', []);
+    const savedOverallTotal = loadFromLocalStorage('overallTotal', 0);
+    const savedApplicationNumberTotals = loadFromLocalStorage('applicationNumberTotals', {});
+    const savedMarketingMetrics = loadFromLocalStorage('marketingMetrics', null);
+    const savedUploadedFileName = loadFromLocalStorage('uploadedFileName', '');
+
+    // 保存されたデータがある場合のみ復元
+    let hasRestoredData = false;
+    
+    if (savedCsvData.length > 0) {
+      setCsvData(savedCsvData);
+      hasRestoredData = true;
+    }
+    if (savedManualSlips.length > 0) {
+      setManualSlips(savedManualSlips);
+      hasRestoredData = true;
+    }
+    if (savedKnownTransactions.length > 0) {
+      setKnownTransactionsData(savedKnownTransactions);
+      hasRestoredData = true;
+    }
+    if (savedUnknownPaymentTools.length > 0) {
+      setUnknownPaymentToolData(savedUnknownPaymentTools);
+      hasRestoredData = true;
+    }
+    if (Object.keys(savedActualSalesInput).length > 0) {
+      setActualSalesInput(savedActualSalesInput);
+      hasRestoredData = true;
+    }
+    setCashCounts(savedCashCounts);
+    setRegisterAmount(savedRegisterAmount);
+    if (savedSelectedStore) {
+      setSelectedStore(savedSelectedStore);
+      hasRestoredData = true;
+    }
+    if (savedPaymentTableDisplayData.length > 0) {
+      setPaymentTableDisplayData(savedPaymentTableDisplayData);
+      hasRestoredData = true;
+    }
+    setOverallTotal(savedOverallTotal);
+    if (Object.keys(savedApplicationNumberTotals).length > 0) {
+      setApplicationNumberTotals(savedApplicationNumberTotals);
+      hasRestoredData = true;
+    }
+    if (savedMarketingMetrics) {
+      setMarketingMetrics(savedMarketingMetrics);
+      hasRestoredData = true;
+    }
+    if (savedUploadedFileName) {
+      setUploadedFileName(savedUploadedFileName);
+      hasRestoredData = true;
+    }
+
+    // 復元されたデータがある場合は通知
+    if (hasRestoredData) {
+      setTimeout(() => {
+        alert('前回のデータが復元されました。新しく作業を開始する場合は「データクリア」ボタンをクリックしてください。');
+      }, 1000); // 1秒後に表示
+    }
+  }, []); // 一度だけ実行
+
+  // データが変更されるたびにlocalStorageに自動保存
+  useEffect(() => {
+    if (csvData.length > 0) {
+      saveToLocalStorage('csvData', csvData);
+    }
+  }, [csvData]);
+
+  useEffect(() => {
+    if (manualSlips.length > 0) {
+      saveToLocalStorage('manualSlips', manualSlips);
+    }
+  }, [manualSlips]);
+
+  useEffect(() => {
+    if (knownTransactionsData.length > 0) {
+      saveToLocalStorage('knownTransactionsData', knownTransactionsData);
+    }
+  }, [knownTransactionsData]);
+
+  useEffect(() => {
+    if (unknownPaymentToolData.length > 0) {
+      saveToLocalStorage('unknownPaymentToolData', unknownPaymentToolData);
+    }
+  }, [unknownPaymentToolData]);
+
+  useEffect(() => {
+    if (Object.keys(actualSalesInput).length > 0) {
+      saveToLocalStorage('actualSalesInput', actualSalesInput);
+    }
+  }, [actualSalesInput]);
+
+  useEffect(() => {
+    saveToLocalStorage('cashCounts', cashCounts);
+  }, [cashCounts]);
+
+  useEffect(() => {
+    saveToLocalStorage('registerAmount', registerAmount);
+  }, [registerAmount]);
+
+  useEffect(() => {
+    if (selectedStore) {
+      saveToLocalStorage('selectedStore', selectedStore);
+    }
+  }, [selectedStore]);
+
+  useEffect(() => {
+    if (paymentTableDisplayData.length > 0) {
+      saveToLocalStorage('paymentTableDisplayData', paymentTableDisplayData);
+    }
+  }, [paymentTableDisplayData]);
+
+  useEffect(() => {
+    saveToLocalStorage('overallTotal', overallTotal);
+  }, [overallTotal]);
+
+  useEffect(() => {
+    if (Object.keys(applicationNumberTotals).length > 0) {
+      saveToLocalStorage('applicationNumberTotals', applicationNumberTotals);
+    }
+  }, [applicationNumberTotals]);
+
+  useEffect(() => {
+    if (marketingMetrics) {
+      saveToLocalStorage('marketingMetrics', marketingMetrics);
+    }
+  }, [marketingMetrics]);
+
+  useEffect(() => {
+    if (uploadedFileName) {
+      saveToLocalStorage('uploadedFileName', uploadedFileName);
+    }
+  }, [uploadedFileName]);
+
   // ユーザーインタラクションを検知
   useEffect(() => {
     const handleUserInteraction = () => {
-      console.log('User interaction detected');
       setHasUserInteracted(true);
       
       // インタラクション後、より確実にbeforeunloadを設定
@@ -148,17 +326,10 @@ export default function Home() {
   // ページ離脱・更新時の確認アラート
   useEffect(() => {
     const handleBeforeUnload = (event) => {
-      console.log('beforeunload event triggered');
-      console.log('csvData.length:', csvData.length);
-      console.log('manualSlips.length:', manualSlips.length);
-      console.log('knownTransactionsData.length:', knownTransactionsData.length);
-      console.log('hasUserInteracted:', hasUserInteracted);
-      
       // データが存在し、かつユーザーがインタラクションしている場合のみ確認メッセージを表示
       const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
       
       if (hasData && hasUserInteracted) {
-        console.log('beforeunload: showing confirmation dialog');
         
         // 複数の方法でbeforeunloadを設定
         event.preventDefault();
@@ -173,7 +344,7 @@ export default function Home() {
         
         return message;
       } else if (hasData && !hasUserInteracted) {
-        console.log('beforeunload: data exists but no user interaction detected');
+        // データ存在するがユーザーインタラクション未検知の場合
       }
     };
 
@@ -198,10 +369,9 @@ export default function Home() {
     // 代替方法：visibilitychange イベント
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('Page is being hidden (tab switch, minimize, etc.)');
         const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
         if (hasData && hasUserInteracted) {
-          console.log('Page hidden with unsaved data');
+          // ページが非表示になったが未保存データがある
         }
       }
     };
@@ -231,6 +401,34 @@ export default function Home() {
   const handleWarningCancel = () => {
     setShowWarningAlert(false);
     setPendingNavigation(null);
+  };
+
+  // データ全クリア機能
+  const handleClearAllData = () => {
+    if (window.confirm('すべてのデータをクリアしますか？この操作は取り消せません。')) {
+      // Stateをリセット
+      setCsvData([]);
+      setManualSlips([]);
+      setKnownTransactionsData([]);
+      setUnknownPaymentToolData([]);
+      setActualSalesInput({});
+      setCashCounts({ '10000': 0, '5000': 0, '1000': 0, '500': 0, '100': 0, '50': 0, '10': 0, '5': 0, '1': 0 });
+      setRegisterAmount(50500);
+      setSelectedStore('');
+      setPaymentTableDisplayData([]);
+      setOverallTotal(0);
+      setApplicationNumberTotals({});
+      setAvailableStores([]);
+      setAllCsvData([]);
+      setFormInput({ slipNumber: '', name: '', amount: '', paymentTool: 'Cash', memo: '', type: '一般' });
+      setMarketingMetrics(null); // マーケティング指標をクリア
+      setUploadedFileName(''); // アップロードファイル名をクリア
+      
+      // localStorageもクリア
+      clearAllLocalStorage();
+      
+      alert('すべてのデータがクリアされました。');
+    }
   };
 
   useEffect(() => {
@@ -794,8 +992,6 @@ export default function Home() {
   };
 
   const handleCopyPaymentSummary = () => {
-    console.log('handleCopyPaymentSummary関数が呼ばれました');
-    
     // 現在のデータを取得
     const currentCombinedData = [
       ...csvData.map((row, index) => ({
@@ -818,14 +1014,8 @@ export default function Home() {
       ...knownTransactionsData.filter(t => t.source === 'manual-transaction')
     ];
 
-    console.log('csvData:', csvData.length);
-    console.log('manualSlips:', manualSlips.length);
-    console.log('knownTransactionsData:', knownTransactionsData.length);
-
-    // デバッグ: 物販データの確認
+    // 物販データの確認
     const merchandiseData = currentCombinedData.filter(item => item.source === 'manual' && item.type === '物販');
-    console.log('物販データ:', merchandiseData);
-    console.log('物販データの金額合計:', merchandiseData.reduce((sum, item) => sum + (item.amount || 0), 0));
 
     // 物販を除外した決済サマリーを生成
     const generalDataOnly = currentCombinedData.filter(item => {
@@ -835,11 +1025,6 @@ export default function Home() {
       }
       return true;
     });
-
-    console.log('物販除外前のデータ数:', currentCombinedData.length);
-    console.log('物販除外後のデータ数:', generalDataOnly.length);
-    console.log('物販除外前の合計金額:', currentCombinedData.reduce((sum, item) => sum + (item.amount || 0), 0));
-    console.log('物販除外後の合計金額:', generalDataOnly.reduce((sum, item) => sum + (item.amount || 0), 0));
 
     // 物販を除外したデータで決済サマリーを再計算
     const generalPaymentSummary = generatePaymentSummaryExcludingMerchandise(generalDataOnly);
@@ -866,9 +1051,6 @@ export default function Home() {
     const generalTotal = generalDataOnly.reduce((sum, item) => sum + (item.amount || 0), 0);
     const totalRow = ['合計', '', '', generalTotal].join('\t');
     rows.push(totalRow);
-
-    console.log('生成された決済サマリー:', generalPaymentSummary);
-    console.log('TSVデータ:', [headerString, ...rows].join('\n'));
 
     const tsvString = [headerString, ...rows].join('\n');
     navigator.clipboard.writeText(tsvString).then(() => {
@@ -1706,6 +1888,7 @@ export default function Home() {
           <a href="#unknown-transactions">不明取引</a>
           <a href="#transactions-list">取引一覧</a>
           <a href="#marketing-metrics">マーケ指標</a>
+          <button onClick={handleClearAllData} className={styles.clearButton}>データクリア</button>
           <button onClick={() => {
             console.log('完了ボタンがクリックされました');
             setShowCompletionPopup(true);
