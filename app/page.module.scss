@@ -1,7 +1,317 @@
+
 .main{
   width: 100vw;
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 3rem;
+  background: 
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(0, 0, 0, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 45% 15%, rgba(255, 255, 255, 0.05) 0%, transparent 40%),
+    linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  position: relative;
+  overflow: hidden;
+
+  // 雑誌風のテクスチャ
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      radial-gradient(1px 1px at 25px 35px, rgba(0, 0, 0, 0.02), transparent),
+      radial-gradient(1px 1px at 45px 65px, rgba(255, 255, 255, 0.03), transparent),
+      radial-gradient(1px 1px at 85px 45px, rgba(0, 0, 0, 0.015), transparent),
+      radial-gradient(1px 1px at 125px 85px, rgba(255, 255, 255, 0.025), transparent);
+    background-repeat: repeat;
+    background-size: 150px 120px;
+    animation: subtleMove 25s linear infinite;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  // 雑誌風の装飾要素
+  .magazineElement {
+    position: absolute;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.02));
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+    
+    &:nth-child(1) {
+      top: 25%;
+      left: 8%;
+      width: 120px;
+      height: 80px;
+      border-radius: 20px;
+      animation: magazineFloat 12s ease-in-out infinite;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.04);
+    }
+    
+    &:nth-child(2) {
+      bottom: 20%;
+      right: 15%;
+      width: 160px;
+      height: 100px;
+      border-radius: 30px;
+      animation: magazineFloat 15s ease-in-out infinite reverse;
+      box-shadow: 0 20px 35px rgba(0, 0, 0, 0.06);
+    }
+    
+    &:nth-child(3) {
+      bottom: 30%;
+      left: 10%;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      animation: magazineFloat 10s ease-in-out infinite;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+    }
+  }
+
+  // タイトルエリア
+  .titleSection {
+    text-align: center;
+    margin-bottom: 2rem;
+    z-index: 2;
+    
+    h1 {
+      font-size: 4rem;
+      font-weight: 300;
+      background: linear-gradient(135deg, #495057, #6c757d, #343a40);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 1rem 0;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      animation: fadeInUp 1s ease-out, textShift 4s ease-in-out infinite;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+      text-transform: uppercase;
+      font-family: 'Helvetica Neue', -apple-system, sans-serif;
+    }
+
+    p {
+      font-size: 1.375rem;
+      color: #6c757d;
+      font-weight: 300;
+      margin: 0;
+      letter-spacing: 0.02em;
+      animation: fadeInUp 1s ease-out 0.2s both;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  // ナビゲーションコンテナ
+  .navigationContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    z-index: 2;
+    animation: fadeInUp 1s ease-out 0.4s both;
+  }
+
+  a{
+    width: 18rem;
+    text-align: center;
+    padding: 1.25rem 2.5rem;
+    border: none;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    color: #495057;
+    font-size: 1.125rem;
+    font-weight: 500;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+      0 1px 3px rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    
+    transition: all 0.15s ease;
+    transform: translateZ(0);
+
+    // 雑誌風のグロー効果
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+      );
+      transition: left 0.7s ease;
+    }
+
+    // サブトル波紋エフェクト
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.05) 0%, transparent 70%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.4s ease, height 0.4s ease;
+      pointer-events: none;
+    }
+
+    &:hover{
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.12),
+        0 15px 25px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.5px;
+      color: #343a40;
+
+      // グロー効果の発動
+      &::before {
+        left: 100%;
+      }
+
+      // 波紋エフェクト
+      &::after {
+        width: 300px;
+        height: 300px;
+      }
+    }
+
+    &:active {
+      transform: translateY(-3px) scale(1.01);
+      transition: transform 0.1s ease;
+      box-shadow: 
+        0 15px 30px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    // フォーカス状態
+    &:focus {
+      outline: none;
+      box-shadow: 
+        0 0 0 3px rgba(108, 117, 125, 0.3),
+        0 25px 50px rgba(0, 0, 0, 0.12);
+    }
+
+    // 個別のボタンスタイル（雑誌風）
+    &:nth-child(1) {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(248, 249, 250, 0.2));
+      
+      &:hover {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(248, 249, 250, 0.35));
+        box-shadow: 
+          0 25px 50px rgba(73, 80, 87, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+    }
+
+    &:nth-child(2) {
+      background: linear-gradient(135deg, rgba(233, 236, 239, 0.3), rgba(222, 226, 230, 0.2));
+      
+      &:hover {
+        background: linear-gradient(135deg, rgba(233, 236, 239, 0.5), rgba(222, 226, 230, 0.35));
+        box-shadow: 
+          0 25px 50px rgba(52, 58, 64, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+    }
+  }
+
+  // レスポンシブデザイン
+  @media (max-width: 768px) {
+    gap: 2rem;
+    padding: 0 1rem;
+
+    .titleSection {
+      h1 {
+        font-size: 2.8rem;
+      }
+      
+      p {
+        font-size: 1.125rem;
+      }
+    }
+
+    a {
+      width: 16rem;
+      font-size: 1rem;
+      padding: 1rem 2rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .titleSection {
+      h1 {
+        font-size: 2.2rem;
+      }
+    }
+
+    a {
+      width: 14rem;
+      padding: 0.875rem 1.5rem;
+    }
+  }
+
+  // 雑誌風アニメーション定義
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes magazineFloat {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    33% {
+      transform: translateY(-15px) rotate(1deg);
+    }
+    66% {
+      transform: translateY(-8px) rotate(-0.5deg);
+    }
+  }
+
+  @keyframes subtleMove {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 150px 120px;
+    }
+  }
+
+  @keyframes textShift {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
 }

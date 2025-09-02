@@ -1749,6 +1749,9 @@ export default function Home() {
         </div>
       )}
       <h1 className={styles.header}>Woody Rental 売上計算ソフト</h1>
+      <div className={styles.manualLink}>
+        <a href={'https://www.notion.so/rentalshop-woody/26120ea1e5f58075b6c6fdb13e60b054?source=copy_link'} target="_blank" rel="noopener noreferrer">マニュアル (Notion)</a>
+      </div>
       <FileUpload 
         processFile={processFile} 
         uploadedFileName={uploadedFileName} 

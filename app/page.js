@@ -8,6 +8,9 @@ export default function Home() {
       <Link href='/daily-account'>
         日計計算
       </Link>
+      <Link href='/live-camera'>
+        ライブカメラ
+      </Link>
     </main>
     
     </div>
