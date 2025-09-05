@@ -1,0 +1,111 @@
+@use './global/' as g;
+
+body {
+  padding: 0;
+  margin: 0;
+  color: g.$black;
+  background-color: g.$bg-white;
+  box-sizing: border-box;
+  font-family: 'Noto Sans JP', sans-serif;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+
+ul > li {
+  list-style: none;
+}
+
+button{
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+p{
+  white-space: pre-wrap;
+}
+
+
+.only-sm{
+  display: none;
+  @include g.sm{
+      display: block;
+  }
+}
+
+.only-md{
+  display: none;
+  @include g.md{
+      display: block;
+  }
+  @include g.sm{
+      display: none;
+  }
+}
+
+.only-lg{
+  @include g.md{
+      display: none;
+  }
+}
+
+.not-sm{
+  @include g.sm{
+      display: none;
+  }
+}
+
+.not-md{
+  @include g.md{
+      display: none;
+  }
+  @include g.sm{
+      display: block;
+  }
+}
+
+.not-lg{
+  display: none;
+  @include g.md{
+      display: block;
+  }
+}
+
+
+//以下safariのリセット
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  -webkit-appearance: none; /* Safari と iOS Safari でのデフォルトのスタイルを無効にする */
+  -moz-appearance: none;    /* Firefoxでのデフォルトのスタイルを無効にする */
+  appearance: none;         /* 標準プロパティ */
+  
+}
+
+/* タッチデバイスにおける"tap highlight color"をリセット */
+button:active,
+button:focus {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS Safari におけるinputの内部の影を無効にする */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+

@@ -1,0 +1,162 @@
+@use '../../../styles/global/' as g;
+
+$border: 2px solid rgba(#fff, 0.8);
+$titleHeight: 4vh;
+
+.container{
+    width: 100vw;
+    height: 100vh;
+    background-color: g.$orange;
+    color: #fff;
+    display: flex;
+    overflow: hidden;
+}
+
+.loading{
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: g.$orange;
+    color: #fff;
+    font-size: 2vw;
+    font-weight: g.$medium;
+}
+
+.weather{
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.topInfo{
+    padding: 1vh 0.75vw;
+    height: $titleHeight;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.futureContainer{
+    display: flex;
+}
+
+.futureTitle, .todayTitle{
+        font-size: 1.25vw;
+        font-weight: g.$medium;
+        text-align: center;
+        background: #fff;
+        color: g.$orange;
+        border-right: 2px solid g.$orange;
+        height: $titleHeight;
+}
+
+.future{
+    flex: 1;
+
+    &Info{
+        height: calc(40vh - $titleHeight);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        align-items: center;
+        border-right: $border;
+    }
+
+    &:last-child{
+        .futureTitle, .futureInfo{
+            border-right: none;
+        }
+    }
+}
+
+.cameraTitle{
+    height: 15vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: $border;
+    line-height: 1;
+    width: 100%;
+
+    h1{
+        font-size: 7vw;
+        font-weight: g.$semi-bold;
+        letter-spacing: -5%;
+        word-spacing: -0.25vw;
+        text-transform: uppercase;
+    }
+}
+
+
+
+
+.today{
+    flex: 1;
+
+    .todayInfo, .todaySnowContainer{
+        height: calc(50% - #{$titleHeight / 2});
+    }
+    
+    &Title{
+        margin-top: 0.5vh;
+    }
+
+    &Info{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: $border;
+       
+
+        & > div{
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            border-right: $border;
+            &:last-child{
+                border-right: none;
+            }
+        }
+    }
+
+    &SnowContainer{
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+
+        & > div{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+           
+        }
+    }
+}
+
+.liveCamera{
+    flex: 1;
+    height: inherit;
+    height: 100vh;
+    overflow: hidden; // 画像下部の余白を削除
+
+    .cameraImgContainer{
+        width: 100%;
+        height: 105%; // 画像下部の余白を削除
+        position: relative;
+
+        img{
+          object-fit: cover;
+      
+        }
+    }
+}
+

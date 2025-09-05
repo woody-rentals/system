@@ -1,0 +1,144 @@
+@use './_variable.scss' as g;
+
+//レスポンシブ
+$xs: 330px; // 小スマホの最大幅
+$sm: 480px; // スマホの最大幅
+$md: 1023px; // タブレットの最大幅
+$lg: 1536px; // ラップトップの最大幅(MBP16inch
+
+// レスポンシブミックスイン
+@mixin xs {
+    @media (max-width: $xs) {
+        @content;
+    }
+}
+
+@mixin sm {
+    @media (max-width: $sm) {
+        @content;
+    }
+}
+
+@mixin md {
+    @media (max-width: $md) {
+        @content;
+    }
+}
+
+@mixin lg {
+    @media (min-width: #{$md + 1}) {
+        @content;
+    }
+}
+
+
+
+//リンクボタン
+@mixin linkBtn{
+  padding: 0 1rem;
+  height: 2.25rem;
+  border: 1px solid g.$black;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  text-transform: capitalize;
+  transition: border-radius .4s ease-in;
+
+  &:hover{
+    border-radius: 0;
+    // background: g.$light-gray;
+
+    img{
+      animation: hover 0.75s ease-in-out;
+    }
+  }
+
+  img{
+    margin-left: 0.5rem;
+  }
+
+  @keyframes hover {
+
+    25%{
+      translate: 0 -0.25em;
+      opacity: 0; 
+    }
+    40%{
+      translate: 0 0.25em;
+      opacity: 0; 
+    }
+  }
+}
+  
+
+
+//ホームのセクションタイトル
+@mixin homeSecTitle{
+  font-size: 0.9rem;
+  font-weight: g.$semi-bold;
+  text-transform: uppercase;
+  
+}
+
+
+@mixin pageHeroCopy{
+  font-size: 2.5rem;
+  font-weight: g.$bold;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+
+  @include sm{
+    font-size: 2rem;
+  }
+
+  &.ja{
+    font-size: 1.75rem;
+    line-height: 1.1;
+
+
+  }
+}
+
+@mixin brands{
+  h3{
+    text-align: center;
+    font-size: 1rem;
+    font-weight: g.$regular;
+    padding-bottom: 0.5rem;
+
+    @include md{
+      margin-bottom: 1rem;
+    }
+  }
+
+  .imgContainer{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-evenly; 
+      column-gap: 2rem;
+      row-gap: 0.75rem;  
+      width: 90vw;
+      max-width: 1200px;
+      margin: 0 auto;
+
+      img{
+          object-fit: contain;
+      }
+
+      @include md{
+        justify-content: center;
+      }
+      @include sm{
+        justify-content: center;
+        column-gap: 1.75rem;
+        row-gap: 1.75rem;
+
+      }
+     
+  }
+}

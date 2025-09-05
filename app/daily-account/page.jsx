@@ -16,7 +16,7 @@ import PaymentSummaryTable from '@/components/daily-account/PaymentSummaryTable.
 import TransactionTable from '@/components/daily-account/TransactionTable.jsx';
 import UnknownTransactionsTable from '@/components/daily-account/UnknownTransactionsTable.jsx';
 
-export default function Home() {
+export default function DailyAccount() {
   // State variables
   const [csvData, setCsvData] = useState([]);
   const [manualSlips, setManualSlips] = useState([]);

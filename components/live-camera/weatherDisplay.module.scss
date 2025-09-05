@@ -1,0 +1,10 @@
+@use '../../styles/global/' as g;
+
+.container{
+    display: flex;
+
+    p{
+        font-size: 2vw;
+    }
+    
+}
