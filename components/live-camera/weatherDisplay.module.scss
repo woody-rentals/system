@@ -2,9 +2,14 @@
 
 .container{
     display: flex;
+    gap: 1vw;
+ 
 
     p{
         font-size: 2vw;
+        white-space: pre-wrap;
+        text-align: center;
+        line-height: 1.2;
     }
     
 }

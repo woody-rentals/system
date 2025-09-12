@@ -21,9 +21,9 @@ const windSpeed = weatherData.wind.speed; // 風速を取得
 
     return (
         <div className={styles.container}> 
-            <Image width={iconSize.width} height={iconSize.height} style={{rotate: `-${windDegree}deg`}} alt={'wind direction'} src={'/svg/weather/wind-arrow.svg'} />
+            <Image width={iconSize.width} height={iconSize.height} style={{rotate: `-${windDegree}deg`}} alt={'wind direction'} src={'/weather/wind-arrow.svg'} />
             <div className={styles.info}>
-              <span>{windSpeed}m/s</span>
+              <span>{Math.round(windSpeed * 10) / 10}m/s</span><br/>
               <span>{getWindDirection(windDegree)}</span>
             </div>
             

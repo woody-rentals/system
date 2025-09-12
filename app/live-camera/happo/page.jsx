@@ -51,10 +51,10 @@ export default function LiveHappo() {
     // 初回データ取得
     fetchFullData();
 
-    // カメラ切り替え（5秒ごと）
+    // カメラ切り替え（10秒ごと）
     const switchInterval = setInterval(() => {
       setCurrentIndex(prevIndex => (prevIndex + 1) % cameras.length);
-    }, 50000);
+    }, 10000);
 
     return () => clearInterval(switchInterval); // クリーンアップ
   }, [currentIndex]); // インデックスが変わるたびデータを取得

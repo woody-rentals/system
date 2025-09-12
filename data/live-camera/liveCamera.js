@@ -1,12 +1,12 @@
 // SKIDAYから提供されたデータを入力
 
-// test: {
-//     title: 'test',
-//     cameraId: '865036047347834',
-//     resortId: 'v5XpDAiHz0PL2Cp8ADxt',
-//     key: '',
-// },
 export const liveCamera = {
+    test: {
+        title: 'test',
+        cameraId: '865036047347834',
+        resortId: 'v5XpDAiHz0PL2Cp8ADxt',
+        key: '4377032614236364843770326142363648',
+    },
     happo: {
         title: 'happo one',
         cameraId: '869223046914881',
