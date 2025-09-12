@@ -13,6 +13,7 @@ export const liveCamera = {
     //     resortId: 'b4OicWBFAfhUvy3TZowr',
     //     key: '3669747613781625136697476137816251',
     // },
+    
     iwatake: {
         title: 'iwatake',
         cameraId: '869223046912224',
