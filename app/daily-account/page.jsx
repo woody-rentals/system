@@ -57,9 +57,7 @@ export default function DailyAccount() {
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [showSubCategories, setShowSubCategories] = useState(false);
   
-  // State for custom warning alert
-  const [showWarningAlert, setShowWarningAlert] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState(null);
+  // ページ離脱の確認に関連する状態
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   // localStorage操作用のヘルパー関数
@@ -359,84 +357,43 @@ export default function DailyAccount() {
     };
   }, [csvData, manualSlips, knownTransactionsData]);
 
-  // ページ離脱・更新時の確認アラート
+  // ページ離脱・更新時の確認（ブラウザ標準のbeforeunloadのみ使用）
   useEffect(() => {
     const handleBeforeUnload = (event) => {
-      // データが存在し、かつユーザーがインタラクションしている場合のみ確認メッセージを表示
       const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
-      
       if (hasData && hasUserInteracted) {
-        
-        // 複数の方法でbeforeunloadを設定
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // 異なるブラウザに対応
         const message = 'Changes you made may not be saved.';
-        event.returnValue = message;
-        
-        // 直接windowのonbeforeunloadも設定
-        window.onbeforeunload = () => message;
-        
-        return message;
-      } else if (hasData && !hasUserInteracted) {
-        // データ存在するがユーザーインタラクション未検知の場合
-      }
-    };
-
-    const handlePopState = (event) => {
-      // データが存在する場合のみカスタムアラートを表示
-      if (csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0) {
         event.preventDefault();
-        setShowWarningAlert(true);
-        setPendingNavigation('back');
-        // 履歴を元に戻す
-        window.history.pushState(null, '', window.location.href);
+        event.returnValue = message;
+        return message;
       }
     };
 
-    // イベントリスナーを追加
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-
-    // 履歴にエントリを追加（戻るボタン対策）
-    window.history.pushState(null, '', window.location.href);
-
-    // 代替方法：visibilitychange イベント
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        const hasData = csvData.length > 0 || manualSlips.length > 0 || knownTransactionsData.length > 0;
-        if (hasData && hasUserInteracted) {
-          // ページが非表示になったが未保存データがある
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // クリーンアップ
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.onbeforeunload = null; // 直接設定したものもクリア
+      window.onbeforeunload = null;
     };
   }, [csvData, manualSlips, knownTransactionsData, hasUserInteracted]);
 
-  // カスタム警告アラートの処理
-  const handleWarningConfirm = () => {
-    setShowWarningAlert(false);
-    if (pendingNavigation === 'back') {
-      // 本当に戻る
-      window.removeEventListener('popstate', () => {}); // 一時的にリスナーを無効化
-      window.history.back();
-    }
-    setPendingNavigation(null);
-  };
+  // カスタム警告は使用しない（ブラウザ標準の挙動のみ）
 
-  const handleWarningCancel = () => {
-    setShowWarningAlert(false);
-    setPendingNavigation(null);
+  // ページ内スクロール用ヘルパー
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (_) {
+        el.scrollIntoView();
+      }
+      // ハッシュも更新（履歴は増やさない）
+      if (window?.history?.replaceState) {
+        window.history.replaceState(null, '', `#${id}`);
+      } else {
+        window.location.hash = `#${id}`;
+      }
+    }
   };
 
   // データ全クリア機能
@@ -1920,13 +1877,13 @@ export default function DailyAccount() {
 
       {isClient && (
         <div className={styles.globalMenu}>
-          <a href="#payment-summary">決済</a>
-          <a href="#manual-slips">伝票入力</a>
-          <a href="#cash-calculator">現金計算</a>
-          <a href="#actual-sales-calculator">実売上計算</a>
-          <a href="#unknown-transactions">不明取引</a>
-          <a href="#transactions-list">取引一覧</a>
-          <a href="#marketing-metrics">マーケ指標</a>
+          <a href="#payment-summary" onClick={(e) => { e.preventDefault(); scrollToSection('payment-summary'); }}>決済</a>
+          <a href="#manual-slips" onClick={(e) => { e.preventDefault(); scrollToSection('manual-slips'); }}>伝票入力</a>
+          <a href="#cash-calculator" onClick={(e) => { e.preventDefault(); scrollToSection('cash-calculator'); }}>現金計算</a>
+          <a href="#actual-sales-calculator" onClick={(e) => { e.preventDefault(); scrollToSection('actual-sales-calculator'); }}>実売上計算</a>
+          <a href="#unknown-transactions" onClick={(e) => { e.preventDefault(); scrollToSection('unknown-transactions'); }}>不明取引</a>
+          <a href="#transactions-list" onClick={(e) => { e.preventDefault(); scrollToSection('transactions-list'); }}>取引一覧</a>
+          <a href="#marketing-metrics" onClick={(e) => { e.preventDefault(); scrollToSection('marketing-metrics'); }}>マーケ指標</a>
           <button onClick={handleClearAllData} className={styles.clearButton}>データクリア</button>
           <button onClick={() => {
             console.log('完了ボタンがクリックされました');
@@ -2078,34 +2035,7 @@ export default function DailyAccount() {
         </div>
       )}
 
-      {/* カスタム警告アラート */}
-      {showWarningAlert && (
-        <div className={styles.warningAlertOverlay}>
-          <div className={styles.warningAlertContent}>
-            <div className={styles.warningIcon}>⚠️</div>
-            <h2 className={styles.warningTitle}>注意</h2>
-            <p className={styles.warningMessage}>
-              このページを離れると、変更内容は失われます。
-              <br />
-              本当に続行しますか？
-            </p>
-            <div className={styles.warningButtons}>
-              <button 
-                onClick={handleWarningCancel} 
-                className={`${styles.warningButton} ${styles.warningCancelButton}`}
-              >
-                キャンセル
-              </button>
-              <button 
-                onClick={handleWarningConfirm} 
-                className={`${styles.warningButton} ${styles.warningConfirmButton}`}
-              >
-                続行
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* カスタム警告アラートは廃止 */}
     </div>
   );
 }
